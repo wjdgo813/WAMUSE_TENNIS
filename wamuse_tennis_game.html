@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#050a05">
+<title>WAMUSE TENNIS</title>
+<style>
+  :root {
+    --green:     #6cff6c;
+    --green-dim: #2a7a2a;
+    --green-fg:  #b8ffb8;
+    --amber:     #ffcc44;
+    --red:       #ff5566;
+    --blue:      #5aa9ff;
+    --leaf:      #5dd470;
+    --grey:      #5a6a5a;
+
+    /* virtual court size — JS uses these as game coords */
+    --court-w: 360px;
+    --court-h: 600px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #050a05;
+    color: var(--green-fg);
+    font-family: 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    overscroll-behavior: none;
+    overflow: hidden;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* CRT scanlines + vignette */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.28) 0px, rgba(0,0,0,0.28) 1px,
+      transparent 1px, transparent 3px
+    );
+    z-index: 200;
+    mix-blend-mode: multiply;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.7) 100%);
+    z-index: 201;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* ===== HUD ===== */
+  .hud {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    color: var(--grey);
+    border: 1px solid var(--green-dim);
+    background: #061306;
+    padding: 6px 8px;
+  }
+  .seg { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .seg label { color: var(--grey); font-size: 9px; letter-spacing: 2px; }
+  .seg .val {
+    color: var(--green);
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 0 0 6px rgba(108,255,108,0.6);
+    line-height: 1;
+  }
+  .seg .val.amber { color: var(--amber); text-shadow: 0 0 6px rgba(255,204,68,0.6); }
+  .seg .val.red   { color: var(--red);   text-shadow: 0 0 6px rgba(255,85,102,0.6); }
+
+  /* ===== Court ===== */
+  .court {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 360 / 600;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent 0, transparent 11px,
+        rgba(108,255,108,0.05) 11px, rgba(108,255,108,0.05) 12px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent 0, transparent 11px,
+        rgba(108,255,108,0.05) 11px, rgba(108,255,108,0.05) 12px
+      ),
+      #061306;
+    overflow: hidden;
+    border: 2px solid var(--green-dim);
+    box-shadow: 0 0 20px rgba(108,255,108,0.15);
+    touch-action: none;
+  }
+
+  /* tennis net — white tape cord + diamond mesh */
+  .court::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0; right: 0;
+    height: 20px;
+    transform: translateY(-50%);
+    background:
+      /* top white cord (tape) */
+      linear-gradient(180deg,
+        rgba(255,255,255,0.92) 0,
+        rgba(255,255,255,0.92) 3px,
+        transparent 3px),
+      /* accent line just below cord */
+      linear-gradient(180deg,
+        transparent 4px,
+        rgba(108,255,108,0.55) 4px,
+        rgba(108,255,108,0.55) 5px,
+        transparent 5px),
+      /* bottom edge of mesh */
+      linear-gradient(180deg,
+        transparent 18px,
+        rgba(108,255,108,0.45) 18px,
+        rgba(108,255,108,0.45) 19px,
+        transparent 19px),
+      /* diamond mesh — 45° strands */
+      repeating-linear-gradient(45deg,
+        rgba(108,255,108,0.35) 0,
+        rgba(108,255,108,0.35) 1px,
+        transparent 1px,
+        transparent 5px),
+      /* diamond mesh — -45° strands */
+      repeating-linear-gradient(-45deg,
+        rgba(108,255,108,0.35) 0,
+        rgba(108,255,108,0.35) 1px,
+        transparent 1px,
+        transparent 5px);
+    box-shadow:
+      0 0 8px rgba(108,255,108,0.4),
+      0 -1px 0 rgba(255,255,255,0.3);
+    z-index: 1;
+  }
+  /* net posts at side edges */
+  .court::after {
+    content: '';
+    position: absolute;
+    top: calc(50% - 22px);
+    left: 0; right: 0;
+    height: 44px;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg,
+        rgba(255,255,255,0.55) 0,
+        rgba(255,255,255,0.55) 2px,
+        transparent 2px,
+        transparent calc(100% - 2px),
+        rgba(255,255,255,0.55) calc(100% - 2px),
+        rgba(255,255,255,0.55) 100%);
+    z-index: 1;
+  }
+
+  /* CPU/P1 corner labels */
+  .court-label {
+    position: absolute;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--grey);
+    z-index: 4;
+    pointer-events: none;
+  }
+  .court-label.top    { top: 4px;    left: 8px; }
+  .court-label.bottom { bottom: 4px; right: 8px; }
+  .court-label .you { color: var(--red);   text-shadow: 0 0 5px rgba(255,85,102,0.5); }
+  .court-label .npc { color: var(--amber); text-shadow: 0 0 5px rgba(255,204,68,0.5); }
+
+  /* ===== Wine paddles — 20% smaller than before ===== */
+  /* virtual size: 360 x 600. wine ≈ 60 x 112 (8px font * 14 lines). */
+  .wine {
+    position: absolute;
+    top: 0; left: 0;
+    will-change: transform;
+    transform-origin: 50% 50%;
+    z-index: 3;
+  }
+  .wine pre {
+    margin: 0;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
+    font-size: 8px;
+    line-height: 1;
+    white-space: pre;
+    text-align: left;
+    text-shadow: 0 0 4px currentColor;
+  }
+  .wine.red pre { color: var(--red);   }
+  .wine.wht pre { color: var(--amber); }
+  .wine.blu pre { color: var(--blue);  }
+  .wine.grn pre { color: var(--leaf);  }
+
+  /* tennis racket overlay */
+  .wine pre.racket {
+    position: absolute;
+    font-size: 7px;
+    line-height: 1;
+    white-space: pre;
+    text-align: left;
+    pointer-events: none;
+    margin: 0;
+    color: #e0e0e0;
+    text-shadow: 0 0 4px rgba(255,255,255,0.6);
+  }
+  /* racket orientation by COURT POSITION, not character color —
+     any character on the player side faces UP, any on cpu side faces DOWN */
+  #player pre.racket {
+    top: -18px;
+    right: -8px;
+    transform: rotate(18deg);
+    transform-origin: 0% 100%;
+  }
+  #cpu pre.racket {
+    bottom: -18px;
+    left: -8px;
+    transform: rotate(-18deg);
+    transform-origin: 100% 0%;
+  }
+
+  /* swing flash on hit */
+  .wine.swing-r { animation: swingR 0.18s ease-out; }
+  .wine.swing-l { animation: swingL 0.18s ease-out; }
+  @keyframes swingR {
+    0%   { transform: translate(var(--tx,0), var(--ty,0)) rotate(0); }
+    50%  { transform: translate(var(--tx,0), var(--ty,0)) rotate(-22deg); }
+    100% { transform: translate(var(--tx,0), var(--ty,0)) rotate(0); }
+  }
+  @keyframes swingL {
+    0%   { transform: translate(var(--tx,0), var(--ty,0)) rotate(0); }
+    50%  { transform: translate(var(--tx,0), var(--ty,0)) rotate(22deg); }
+    100% { transform: translate(var(--tx,0), var(--ty,0)) rotate(0); }
+  }
+
+  /* ===== Ball + trail ===== */
+  .ball {
+    position: absolute;
+    top: 0; left: 0;
+    width: 12px; height: 12px;
+    background: var(--amber);
+    box-shadow:
+      0 0 0 2px #000,
+      0 0 8px var(--amber),
+      0 0 18px rgba(255,204,68,0.7);
+    will-change: transform;
+    z-index: 5;
+  }
+  .trail {
+    position: absolute;
+    top: 0; left: 0;
+    width: 6px; height: 6px;
+    background: var(--amber);
+    opacity: 0.35;
+    margin: 3px;
+    will-change: transform;
+    z-index: 4;
+  }
+  .trail.t2 { opacity: 0.18; }
+  .trail.t3 { opacity: 0.08; }
+
+  /* ===== Overlays ===== */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(5, 12, 5, 0.9);
+    z-index: 50;
+    text-align: center;
+    color: var(--green);
+    padding: 16px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h1 {
+    margin: 0;
+    font-size: 36px;
+    letter-spacing: 10px;
+    font-weight: bold;
+    text-shadow: 0 0 14px rgba(108,255,108,0.8);
+  }
+  .overlay h1.dead { color: var(--red); text-shadow: 0 0 16px rgba(255,85,102,0.8); }
+  .overlay p {
+    margin: 0;
+    color: var(--green-fg);
+    letter-spacing: 3px;
+    font-size: 11px;
+  }
+  .overlay .pulse { animation: pulse 1s infinite alternate; }
+  @keyframes pulse {
+    from { opacity: 0.4; }
+    to   { opacity: 1.0; }
+  }
+  .overlay .stats {
+    margin-top: 12px;
+    display: flex;
+    gap: 24px;
+  }
+  .overlay .stats .s { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .overlay .stats .s label { color: var(--grey); font-size: 10px; letter-spacing: 2px; }
+  .overlay .stats .s .v {
+    color: var(--green);
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 0 0 8px rgba(108,255,108,0.6);
+  }
+  .overlay .stats .s .v.amber { color: var(--amber); text-shadow: 0 0 8px rgba(255,204,68,0.6); }
+
+  /* countdown */
+  .countdown {
+    font-size: 96px;
+    font-weight: bold;
+    color: var(--amber);
+    text-shadow: 0 0 22px rgba(255,204,68,0.8);
+    animation: cdown 0.7s ease-out;
+  }
+  @keyframes cdown {
+    0%   { transform: scale(0.4); opacity: 0; }
+    40%  { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1.0); opacity: 1; }
+  }
+
+  /* +10 winner flash */
+  .bonus {
+    position: absolute;
+    top: 38%;
+    left: 0; right: 0;
+    text-align: center;
+    font-weight: bold;
+    color: var(--green);
+    text-shadow:
+      0 0 14px rgba(108,255,108,0.9),
+      0 0 28px rgba(108,255,108,0.5);
+    z-index: 30;
+    pointer-events: none;
+  }
+  .bonus .num { font-size: 56px; letter-spacing: 8px; }
+  .bonus .sub {
+    display: block;
+    font-size: 13px;
+    letter-spacing: 4px;
+    color: var(--amber);
+    text-shadow: 0 0 6px rgba(255,204,68,0.7);
+    margin-top: 6px;
+  }
+  .bonus.hidden { display: none; }
+  .bonus.show { animation: bonusFade 1.1s ease-out forwards; }
+  @keyframes bonusFade {
+    0%   { transform: scale(0.5) translateY(20px); opacity: 0; }
+    20%  { transform: scale(1.15) translateY(0);    opacity: 1; }
+    65%  { transform: scale(1.0)  translateY(-10px); opacity: 1; }
+    100% { transform: scale(1.0)  translateY(-40px); opacity: 0; }
+  }
+
+  /* ===== WAMUSE banner — flashy shimmer + sparkles ===== */
+  .banner {
+    position: relative;
+    text-align: center;
+    font-size: 24px;
+    letter-spacing: 12px;
+    font-weight: bold;
+    padding: 12px 0 8px;
+  }
+  .banner::before {
+    content: '';
+    position: absolute;
+    inset: -4px 20% -4px 20%;
+    background: radial-gradient(ellipse at center, rgba(108,255,108,0.22), rgba(255,204,68,0.10) 40%, transparent 70%);
+    animation: halo 2.2s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 50%;
+    filter: blur(2px);
+  }
+  .banner-text {
+    position: relative;
+    display: inline-block;
+    background: linear-gradient(
+      90deg,
+      #6cff6c   0%,
+      #b8ffb8  18%,
+      #ffeb88  36%,
+      #ffcc44  50%,
+      #ff8a99  64%,
+      #ffcc44  82%,
+      #6cff6c 100%
+    );
+    background-size: 220% auto;
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation:
+      shimmer 2.8s linear infinite,
+      breathe 1.4s ease-in-out infinite alternate;
+    filter:
+      drop-shadow(0 0 6px rgba(108,255,108,0.55))
+      drop-shadow(0 0 16px rgba(255,204,68,0.30));
+    z-index: 1;
+  }
+  .sparkle {
+    position: absolute;
+    font-size: 14px;
+    text-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 2;
+    will-change: transform, opacity;
+  }
+  .sparkle.s1 { left:  8%; top:  18%; color: var(--amber); animation: twinkle 1.8s 0.00s infinite; }
+  .sparkle.s2 { left: 26%; top:  72%; color: var(--green); animation: twinkle 1.8s 0.45s infinite; }
+  .sparkle.s3 { right: 8%; top:  22%; color: var(--green); animation: twinkle 1.8s 0.90s infinite; }
+  .sparkle.s4 { right:26%; top:  68%; color: var(--amber); animation: twinkle 1.8s 1.35s infinite; }
+  .sparkle.s5 { left: 50%; top:  -2%; color: #fff;          animation: twinkle 2.2s 0.30s infinite; transform: translateX(-50%); }
+  .sparkle.s6 { left: 50%; bottom: -2%;color: var(--amber); animation: twinkle 2.2s 1.10s infinite; transform: translateX(-50%); }
+
+  @keyframes shimmer {
+    0%   { background-position: 220% center; }
+    100% { background-position: 0%   center; }
+  }
+  @keyframes breathe {
+    from { transform: scale(1.00);
+           filter: drop-shadow(0 0 6px rgba(108,255,108,0.45)) drop-shadow(0 0 14px rgba(255,204,68,0.20)); }
+    to   { transform: scale(1.06);
+           filter: drop-shadow(0 0 12px rgba(255,204,68,0.65)) drop-shadow(0 0 26px rgba(108,255,108,0.45)); }
+  }
+  @keyframes halo {
+    from { opacity: 0.45; transform: scaleX(0.85); }
+    to   { opacity: 1.00; transform: scaleX(1.12); }
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+    18%      { opacity: 1; transform: scale(1.1) rotate(45deg); }
+    45%      { opacity: 0.8; transform: scale(1.5) rotate(180deg); }
+    78%      { opacity: 0.25;transform: scale(0.7) rotate(300deg); }
+  }
+
+  .hint {
+    text-align: center;
+    color: var(--grey);
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+  .hint b { color: var(--green); font-weight: normal; }
+
+  /* ===== nickname input ===== */
+  .overlay input.name-input {
+    background: rgba(13, 19, 13, 0.7);
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 20px;
+    padding: 10px 16px;
+    width: 240px;
+    text-align: center;
+    letter-spacing: 4px;
+    outline: none;
+    text-shadow: 0 0 8px rgba(108,255,108,0.5);
+    margin: 14px 0 4px;
+    -webkit-appearance: none;
+    border-radius: 0;
+    caret-color: var(--green);
+  }
+  .overlay input.name-input::placeholder {
+    color: var(--grey);
+    text-shadow: none;
+    letter-spacing: 3px;
+  }
+  .overlay input.name-input:focus {
+    border-color: var(--green);
+    background: rgba(108,255,108,0.06);
+    box-shadow: 0 0 10px rgba(108,255,108,0.25);
+  }
+  .overlay button.start-btn {
+    background: rgba(108,255,108,0.1);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 8px 28px;
+    letter-spacing: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 10px;
+    -webkit-tap-highlight-color: transparent;
+    text-shadow: 0 0 6px rgba(108,255,108,0.5);
+  }
+  .overlay button.start-btn:active {
+    background: rgba(108,255,108,0.2);
+    transform: scale(0.97);
+  }
+
+  /* ===== character select ===== */
+  .char-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .char-btn {
+    background: rgba(13, 19, 13, 0.6);
+    border: 1px solid var(--green-dim);
+    padding: 10px 16px;
+    width: 220px;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    transition: transform 0.08s ease;
+  }
+  .char-btn .cn {
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 4px;
+  }
+  .char-btn .co {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--grey);
+  }
+  .char-btn.red          { border-color: rgba(255,85,102,0.5); }
+  .char-btn.red .cn      { color: var(--red);   text-shadow: 0 0 8px rgba(255,85,102,0.5); }
+  .char-btn.wht          { border-color: rgba(255,204,68,0.5); }
+  .char-btn.wht .cn      { color: var(--amber); text-shadow: 0 0 8px rgba(255,204,68,0.5); }
+  .char-btn.blu          { border-color: rgba(90,169,255,0.5); }
+  .char-btn.blu .cn      { color: var(--blue);  text-shadow: 0 0 8px rgba(90,169,255,0.5); }
+  .char-btn.grn          { border-color: rgba(93,212,112,0.5); }
+  .char-btn.grn .cn      { color: var(--leaf);  text-shadow: 0 0 8px rgba(93,212,112,0.5); }
+  .char-btn:active {
+    background: rgba(108, 255, 108, 0.08);
+    transform: scale(0.97);
+  }
+
+  /* player bar (nickname + rename) */
+  .player-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 4px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--grey);
+  }
+  .player-bar .ptag b {
+    color: var(--green);
+    font-weight: normal;
+    text-shadow: 0 0 6px rgba(108,255,108,0.5);
+    margin-left: 6px;
+    letter-spacing: 3px;
+  }
+  .rename-btn {
+    background: transparent;
+    border: 1px solid var(--red);
+    color: var(--red);
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    padding: 3px 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    text-shadow: 0 0 6px rgba(255,85,102,0.55);
+    box-shadow: 0 0 6px rgba(255,85,102,0.25);
+  }
+  .rename-btn:active {
+    background: rgba(255,85,102,0.18);
+  }
+  .rename-btn[disabled] {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  /* mute button */
+  .mute-btn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(13, 19, 13, 0.85);
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 1px;
+    width: 38px;
+    height: 30px;
+    padding: 0;
+    cursor: pointer;
+    z-index: 300;
+    text-shadow: 0 0 6px rgba(108,255,108,0.5);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mute-btn.muted {
+    color: var(--grey);
+    border-color: var(--grey);
+    text-shadow: none;
+  }
+</style>
+</head>
+<body>
+
+<button class="mute-btn" id="muteBtn" aria-label="Toggle sound">♪</button>
+
+<div class="stage">
+
+  <div class="player-bar">
+    <span class="ptag">PLAYER<b id="playerName">—</b></span>
+    <button class="rename-btn" id="renameBtn">RENAME</button>
+  </div>
+
+  <div class="hud">
+    <div class="seg"><label>SCORE</label><span class="val" id="score">0000</span></div>
+    <div class="seg"><label>RANK</label><span class="val amber" id="rank">D</span></div>
+    <div class="seg"><label>RALLY</label><span class="val" id="rally">000</span></div>
+    <div class="seg"><label>HIGH</label><span class="val red" id="high">0000</span></div>
+  </div>
+
+  <div class="court" id="court">
+
+    <div class="court-label top">CPU <span class="npc">[ LABET · FRANCE ]</span></div>
+    <div class="court-label bottom"><span class="you">[ L'ARIETTA · ITALY ]</span> P1</div>
+
+    <!-- CPU at TOP -->
+    <div class="wine wht" id="cpu">
+<pre class="racket">   |
+   |
+ /###\
+|#####|
+ \###/
+  ___</pre>
+<pre>     ___
+     |o|
+     | |
+     | |
+     | |
+   /-----\
+  /-------\
+ /  O   O  \
+ |    v    |
+ |---------|
+ |  Labet  |
+ |---------|
+ |_________|
+  \_______/</pre>
+    </div>
+
+    <!-- Player at BOTTOM -->
+    <div class="wine red" id="player">
+<pre class="racket">  ___
+ /###\
+|#####|
+ \###/
+   |
+   |</pre>
+<pre>     ___
+     |o|
+     | |
+     | |
+     | |
+   /-----\
+  /-------\
+ /  O   O  \
+ |    v    |
+ |---------|
+ |L'Arietta|
+ |---------|
+ |_________|
+  \_______/</pre>
+    </div>
+
+    <div class="trail t3" id="trail3"></div>
+    <div class="trail t2" id="trail2"></div>
+    <div class="ball"   id="ball"></div>
+
+    <div class="bonus hidden" id="bonus">
+      <div class="num">+10</div>
+      <span class="sub">WINNER!  CPU MISSED</span>
+    </div>
+
+    <div class="overlay hidden" id="nameOverlay">
+      <h1>WAMUSE</h1>
+      <p>· endless tennis rally ·</p>
+      <p style="margin-top:18px; color: var(--green)">ENTER YOUR NAME</p>
+      <input type="text" class="name-input" id="nameInput" maxlength="12" placeholder="player" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <button class="start-btn" id="nameSubmit">CONFIRM</button>
+    </div>
+
+    <div class="overlay hidden" id="selectOverlay">
+      <h1>WAMUSE</h1>
+      <p>· endless tennis rally ·</p>
+      <p style="margin-top:18px; color: var(--green)">CHOOSE  YOUR  WINE</p>
+      <div class="char-list">
+        <button class="char-btn red" data-char="arietta">
+          <span class="cn">L'ARIETTA</span>
+          <span class="co">ITALY  ·  ROUGE</span>
+        </button>
+        <button class="char-btn wht" data-char="labet">
+          <span class="cn">LABET</span>
+          <span class="co">FRANCE  ·  BLANC</span>
+        </button>
+        <button class="char-btn blu" data-char="mazel">
+          <span class="cn">LE MAZEL</span>
+          <span class="co">FRANCE  ·  NATUREL</span>
+        </button>
+        <button class="char-btn grn" data-char="meogom">
+          <span class="cn">MEOGOM</span>
+          <span class="co">KOREA  ·  FOREST</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="overOverlay">
+      <h1 class="dead">GAME OVER</h1>
+      <p id="overReason">— ball passed your side —</p>
+      <div class="stats">
+        <div class="s"><label>SCORE</label><span class="v" id="overScore">0000</span></div>
+        <div class="s"><label>RANK</label><span class="v amber" id="overRank">D</span></div>
+        <div class="s"><label>HIGH</label><span class="v" id="overHigh">0000</span></div>
+      </div>
+      <p class="pulse" style="margin-top:18px">TAP TO RETRY</p>
+    </div>
+
+    <div class="overlay hidden" id="cdOverlay">
+      <div class="countdown" id="cdNum">3</div>
+    </div>
+
+  </div>
+
+  <div class="banner">
+    <span class="sparkle s1">✦</span>
+    <span class="sparkle s2">✧</span>
+    <span class="sparkle s3">✦</span>
+    <span class="sparkle s4">✧</span>
+    <span class="sparkle s5">✦</span>
+    <span class="sparkle s6">✧</span>
+    <span class="banner-text">W A M U S E</span>
+  </div>
+
+  <div class="hint">
+    <span><b>DRAG</b> wine left/right · 1 hit = +1 · CPU miss = +10 · you miss = over</span>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  // ===== virtual game coordinates =====
+  const COURT_W = 360;
+  const COURT_H = 600;
+  const PADDLE_W = 60;    // ~12 chars * 5px (8px monospace font)
+  const PADDLE_H = 112;   // 14 lines * 8px
+  const BALL_SIZE = 12;
+  const PLAYER_SPEED_KEY = 7;
+  const CPU_BASE_SPEED = 4;
+  const BALL_BASE = 4.5;
+  const BALL_SPEEDUP = 1.04;
+  const BALL_MAX = 13;
+
+  // ===== elements =====
+  const courtEl  = document.getElementById('court');
+  const playerEl = document.getElementById('player');
+  const cpuEl    = document.getElementById('cpu');
+  const ballEl   = document.getElementById('ball');
+  const t2El     = document.getElementById('trail2');
+  const t3El     = document.getElementById('trail3');
+  const scoreEl  = document.getElementById('score');
+  const rankEl   = document.getElementById('rank');
+  const rallyEl  = document.getElementById('rally');
+  const highEl   = document.getElementById('high');
+  const overOv   = document.getElementById('overOverlay');
+  const cdOv     = document.getElementById('cdOverlay');
+  const cdNum    = document.getElementById('cdNum');
+  const overScore= document.getElementById('overScore');
+  const overRank = document.getElementById('overRank');
+  const overHigh = document.getElementById('overHigh');
+  const overReason = document.getElementById('overReason');
+  const bonusEl = document.getElementById('bonus');
+  const muteBtn = document.getElementById('muteBtn');
+  const selectOv  = document.getElementById('selectOverlay');
+  const nameOv    = document.getElementById('nameOverlay');
+  const nameInput = document.getElementById('nameInput');
+  const nameSubmit= document.getElementById('nameSubmit');
+  const labelTop  = document.querySelector('.court-label.top');
+  const labelBot  = document.querySelector('.court-label.bottom');
+  const playerNameEl = document.getElementById('playerName');
+  const renameBtn = document.getElementById('renameBtn');
+
+  // ===== CHARACTERS =====
+  // label is exactly 9 chars to fit body inner width
+  const CHARS = [
+    { id: 'arietta', name: "L'Arietta", country: 'ITALY',  color: '#ff5566', cls: 'red', label: "L'Arietta" },
+    { id: 'labet',   name: 'Labet',     country: 'FRANCE', color: '#ffcc44', cls: 'wht', label: "  Labet  " },
+    { id: 'mazel',   name: 'Le Mazel',  country: 'FRANCE', color: '#5aa9ff', cls: 'blu', label: " Le Mazel" },
+    { id: 'meogom',  name: 'Meogom',    country: 'KOREA',  color: '#5dd470', cls: 'grn', label: " Meogom  " }
+  ];
+  function bottleAscii(label) {
+    return [
+      "     ___",
+      "     |o|",
+      "     | |",
+      "     | |",
+      "     | |",
+      "   /-----\\",
+      "  /-------\\",
+      " /  O   O  \\",
+      " |    v    |",
+      " |---------|",
+      ` |${label}|`,
+      " |---------|",
+      " |_________|",
+      "  \\_______/"
+    ].join("\n");
+  }
+  function applyChar(el, ch) {
+    el.classList.remove('red', 'wht', 'blu');
+    el.classList.add(ch.cls);
+    // bottle is the 2nd <pre> (1st is racket)
+    const pres = el.querySelectorAll('pre');
+    const bottle = pres[1] || pres[0];
+    bottle.textContent = bottleAscii(ch.label);
+  }
+  function updateLabels(p, c) {
+    const playerTag = (state.nickname || 'P1').toUpperCase();
+    labelTop.innerHTML = `CPU <span style="color:${c.color}; text-shadow:0 0 6px ${c.color}80">[ ${c.name.toUpperCase()} · ${c.country} ]</span>`;
+    labelBot.innerHTML = `<span style="color:${p.color}; text-shadow:0 0 6px ${p.color}80">[ ${p.name.toUpperCase()} · ${p.country} ]</span> ${playerTag}`;
+  }
+
+  // ===== AUDIO ENGINE (Web Audio API, chiptune synthesis) =====
+  let audioCtx = null;
+  let masterGain = null;
+  let muted = localStorage.getItem('wamuse-muted') === 'true';
+  let bgmActive = false;
+  let bgmTimer = null;
+  let bgmNextTime = 0;
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      audioCtx = new Ctx();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = muted ? 0 : 1;
+      masterGain.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function tone(freq, dur, type, vol, when) {
+    if (!audioCtx) return;
+    const t0 = when || audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const g   = audioCtx.createGain();
+    osc.type = type || 'square';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol || 0.1, t0 + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(t0); osc.stop(t0 + dur + 0.05);
+  }
+
+  // SFX
+  function sfxHit() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    tone(523, 0.06, 'square', 0.18, t);
+    tone(784, 0.05, 'square', 0.10, t + 0.02);
+  }
+  function sfxCpuHit() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    tone(330, 0.06, 'square', 0.16, t);
+    tone(495, 0.05, 'square', 0.10, t + 0.02);
+  }
+  function sfxBonus() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    tone(523,  0.10, 'square', 0.16, t);
+    tone(659,  0.10, 'square', 0.16, t + 0.08);
+    tone(784,  0.10, 'square', 0.16, t + 0.16);
+    tone(1047, 0.25, 'square', 0.18, t + 0.24);
+  }
+  function sfxGameOver() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    tone(440, 0.18, 'square', 0.15, t);
+    tone(392, 0.18, 'square', 0.15, t + 0.16);
+    tone(349, 0.18, 'square', 0.15, t + 0.32);
+    tone(262, 0.45, 'square', 0.15, t + 0.48);
+  }
+
+  // BGM — looping chiptune (I-V-vi-IV in C major, 16 8th notes per loop)
+  const N = {
+    C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
+    C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
+    C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00, B5: 987.77,
+    C6: 1046.5
+  };
+  const BEAT = 0.18;
+  const MELODY = [
+    'C5','E5','G5','E5',   // I  - C major
+    'D5','G5','B5','G5',   // V  - G major
+    'A4','C5','E5','C5',   // vi - A minor
+    'F4','A4','C5','A4'    // IV - F major
+  ];
+  const BASS = [
+    'C3','G3','C3','G3',
+    'G3','D4','G3','D4',
+    'A3','E4','A3','E4',
+    'F3','C4','F3','C4'
+  ];
+  const LOOP_DUR = MELODY.length * BEAT;
+
+  function scheduleBgmLoop(startTime) {
+    for (let i = 0; i < MELODY.length; i++) {
+      const t = startTime + i * BEAT;
+      tone(N[MELODY[i]], BEAT * 0.85, 'square',   0.045, t);
+      tone(N[BASS[i]],   BEAT * 0.85, 'triangle', 0.07,  t);
+    }
+  }
+  function startBgm() {
+    if (!audioCtx || bgmActive) return;
+    bgmActive = true;
+    bgmNextTime = audioCtx.currentTime + 0.08;
+    scheduleBgmLoop(bgmNextTime);
+    bgmNextTime += LOOP_DUR;
+    bgmTimer = setInterval(() => {
+      if (!bgmActive || !audioCtx) return;
+      const now = audioCtx.currentTime;
+      if (now + 0.5 > bgmNextTime) {
+        scheduleBgmLoop(bgmNextTime);
+        bgmNextTime += LOOP_DUR;
+      }
+    }, 120);
+  }
+
+  function updateMuteBtn() {
+    muteBtn.textContent = muted ? '♪/' : '♪';
+    muteBtn.classList.toggle('muted', muted);
+  }
+  function toggleMute() {
+    muted = !muted;
+    if (masterGain) masterGain.gain.value = muted ? 0 : 1;
+    localStorage.setItem('wamuse-muted', muted ? 'true' : 'false');
+    updateMuteBtn();
+  }
+  muteBtn.addEventListener('click', e => { e.stopPropagation(); ensureAudio(); toggleMute(); });
+  updateMuteBtn();
+
+  // first-touch primer (browser autoplay policy)
+  function primeAudio() {
+    ensureAudio();
+    startBgm();
+  }
+
+  // ===== state =====
+  const state = {
+    mode: 'idle',  // name | select | counting | rally | pause | over
+    score: 0,
+    rally: 0,
+    high: parseInt(localStorage.getItem('wamuse-tennis-high') || '0', 10),
+    nickname: localStorage.getItem('wamuse-nickname') || '',
+    playerChar: null,
+    cpuChar: null,
+    keys: {},
+    player: { x: (COURT_W - PADDLE_W) / 2, y: COURT_H - PADDLE_H - 20 },
+    cpu:    { x: (COURT_W - PADDLE_W) / 2, y: 20 },
+    ball:   { x: COURT_W/2, y: COURT_H/2, vx: 0, vy: 0, speed: BALL_BASE },
+    trail:  [{x: COURT_W/2, y: COURT_H/2}, {x: COURT_W/2, y: COURT_H/2}]
+  };
+
+  // ===== utils =====
+  const pad = (n, w=4) => String(n).padStart(w, '0');
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  function rank(s) {
+    if (s >= 200) return 'SS';
+    if (s >= 100) return 'S';
+    if (s >= 50)  return 'A';
+    if (s >= 25)  return 'B';
+    if (s >= 10)  return 'C';
+    return 'D';
+  }
+
+  // ===== rendering =====
+  function setPos(el, x, y) {
+    el.style.setProperty('--tx', x + 'px');
+    el.style.setProperty('--ty', y + 'px');
+    el.style.transform = `translate(${x}px, ${y}px)`;
+  }
+  function render() {
+    setPos(playerEl, state.player.x, state.player.y);
+    setPos(cpuEl,    state.cpu.x,    state.cpu.y);
+    ballEl.style.transform = `translate(${state.ball.x}px, ${state.ball.y}px)`;
+    t2El.style.transform   = `translate(${state.trail[0].x}px, ${state.trail[0].y}px)`;
+    t3El.style.transform   = `translate(${state.trail[1].x}px, ${state.trail[1].y}px)`;
+
+    scoreEl.textContent = pad(state.score);
+    rallyEl.textContent = pad(state.rally, 3);
+    rankEl.textContent  = rank(state.score);
+    highEl.textContent  = pad(state.high);
+  }
+  function showBonus() {
+    bonusEl.classList.remove('hidden');
+    bonusEl.classList.remove('show');
+    void bonusEl.offsetWidth;
+    bonusEl.classList.add('show');
+    setTimeout(() => bonusEl.classList.add('hidden'), 1100);
+    sfxBonus();
+  }
+  function flashSwing(side) {
+    const el = side === 'p' ? playerEl : cpuEl;
+    const cls = side === 'p' ? 'swing-r' : 'swing-l';
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), 200);
+  }
+
+  // ===== game flow =====
+  function hideAllOverlays() {
+    nameOv.classList.add('hidden');
+    selectOv.classList.add('hidden');
+    overOv.classList.add('hidden');
+    cdOv.classList.add('hidden');
+  }
+  function showName() {
+    state.mode = 'name';
+    hideAllOverlays();
+    nameOv.classList.remove('hidden');
+    nameInput.value = state.nickname;
+    updateRenameBtn();
+    setTimeout(() => { try { nameInput.focus(); } catch(e){} }, 80);
+  }
+  function showSelect() {
+    state.mode = 'select';
+    hideAllOverlays();
+    selectOv.classList.remove('hidden');
+    updateRenameBtn();
+  }
+  function refreshNickname() {
+    playerNameEl.textContent = (state.nickname || '—').toUpperCase();
+    if (state.playerChar && state.cpuChar) {
+      updateLabels(state.playerChar, state.cpuChar);
+    }
+  }
+  function updateRenameBtn() {
+    const lock = state.mode === 'rally' || state.mode === 'counting' || state.mode === 'pause';
+    renameBtn.disabled = lock;
+  }
+  function submitName() {
+    const v = (nameInput.value || '').trim().slice(0, 12);
+    if (!v) { nameInput.focus(); return; }
+    state.nickname = v;
+    localStorage.setItem('wamuse-nickname', v);
+    refreshNickname();
+    showSelect();
+  }
+  renameBtn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (state.mode === 'rally' || state.mode === 'counting' || state.mode === 'pause') return;
+    primeAudio();
+    showName();
+  });
+  function selectChar(charId) {
+    const player = CHARS.find(c => c.id === charId);
+    if (!player) return;
+    const others = CHARS.filter(c => c.id !== charId);
+    const cpu = others[Math.floor(Math.random() * others.length)];
+    state.playerChar = player;
+    state.cpuChar    = cpu;
+    applyChar(playerEl, player);
+    applyChar(cpuEl,    cpu);
+    updateLabels(player, cpu);
+    selectOv.classList.add('hidden');
+    newGame();
+  }
+  document.querySelectorAll('.char-btn').forEach(btn => {
+    const onPick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      primeAudio();
+      selectChar(btn.dataset.char);
+    };
+    btn.addEventListener('pointerdown', onPick);
+    btn.addEventListener('click',        onPick);
+  });
+  // nickname submit handlers
+  nameSubmit.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    primeAudio();
+    submitName();
+  });
+  nameInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      primeAudio();
+      submitName();
+    }
+  });
+  // prevent court pointer handler from stealing focus when tapping inside name overlay
+  nameOv.addEventListener('pointerdown', e => e.stopPropagation());
+  selectOv.addEventListener('pointerdown', e => e.stopPropagation());
+  function showGameOver(reason) {
+    overOv.classList.remove('hidden');
+    overScore.textContent = pad(state.score);
+    overRank.textContent  = rank(state.score);
+    overHigh.textContent  = pad(state.high);
+    overReason.textContent = reason || '— ball passed your side —';
+  }
+  function newGame() {
+    state.score = 0;
+    state.rally = 0;
+    state.player.x = (COURT_W - PADDLE_W) / 2;
+    state.player.y = COURT_H - PADDLE_H - 20;
+    state.cpu.x    = (COURT_W - PADDLE_W) / 2;
+    state.cpu.y    = 20;
+    countdownAndServe('player');
+  }
+  function countdownAndServe(direction) {
+    state.mode = 'counting';
+    updateRenameBtn();
+    let n = 3;
+    cdOv.classList.remove('hidden');
+    cdNum.textContent = n;
+    const tickC = () => {
+      n--;
+      if (n > 0) {
+        cdNum.textContent = n;
+        cdNum.style.animation = 'none';
+        void cdNum.offsetWidth;
+        cdNum.style.animation = '';
+        setTimeout(tickC, 600);
+      } else {
+        cdOv.classList.add('hidden');
+        startServe(direction);
+      }
+    };
+    setTimeout(tickC, 600);
+  }
+  function startServe(direction) {
+    state.ball.x = COURT_W/2 - BALL_SIZE/2;
+    state.ball.y = COURT_H/2 - BALL_SIZE/2;
+    state.ball.speed = BALL_BASE;
+    const angle = (Math.random() - 0.5) * 0.6;
+    const dir = direction === 'player' ? 1 : -1;  // 1 = down (toward player), -1 = up (toward cpu)
+    state.ball.vy = dir * BALL_BASE * Math.cos(angle);
+    state.ball.vx = BALL_BASE * Math.sin(angle);
+    state.trail[0] = { x: state.ball.x, y: state.ball.y };
+    state.trail[1] = { x: state.ball.x, y: state.ball.y };
+    state.mode = 'rally';
+    updateRenameBtn();
+  }
+  function endGame(reason) {
+    if (state.score > state.high) {
+      state.high = state.score;
+      localStorage.setItem('wamuse-tennis-high', String(state.high));
+    }
+    state.mode = 'over';
+    showGameOver(reason);
+    sfxGameOver();
+    updateRenameBtn();
+  }
+
+  // ===== input: pointer (touch + mouse unified) =====
+  let pointerDown = false;
+
+  function getCourtX(clientX) {
+    const rect = courtEl.getBoundingClientRect();
+    const scale = COURT_W / rect.width;
+    return (clientX - rect.left) * scale;
+  }
+
+  courtEl.addEventListener('pointerdown', e => {
+    // overlays handle their own clicks (name/select).
+    if (state.mode === 'select' || state.mode === 'name') {
+      primeAudio();
+      return;
+    }
+    e.preventDefault();
+    courtEl.setPointerCapture(e.pointerId);
+    pointerDown = true;
+    primeAudio();
+    if (state.mode === 'over') {
+      overOv.classList.add('hidden');
+      newGame();
+      return;
+    }
+    if (state.mode === 'rally') {
+      const x = getCourtX(e.clientX);
+      state.player.x = clamp(x - PADDLE_W/2, 0, COURT_W - PADDLE_W);
+    }
+  });
+  courtEl.addEventListener('pointermove', e => {
+    if (!pointerDown || state.mode !== 'rally') return;
+    e.preventDefault();
+    const x = getCourtX(e.clientX);
+    state.player.x = clamp(x - PADDLE_W/2, 0, COURT_W - PADDLE_W);
+  });
+  const endPointer = () => { pointerDown = false; };
+  courtEl.addEventListener('pointerup',     endPointer);
+  courtEl.addEventListener('pointercancel', endPointer);
+  courtEl.addEventListener('pointerleave',  endPointer);
+
+  // keyboard fallback (desktop)
+  const isArrow = k => k === 'ArrowLeft' || k === 'ArrowRight';
+  document.addEventListener('keydown', e => {
+    if (isArrow(e.key)) {
+      e.preventDefault();
+      state.keys[e.key] = true;
+      primeAudio();
+      if (state.mode === 'over') {
+        overOv.classList.add('hidden');
+        newGame();
+      }
+    }
+  });
+  document.addEventListener('keyup', e => {
+    if (isArrow(e.key)) state.keys[e.key] = false;
+  });
+
+  // ===== loop =====
+  function tick() {
+    if (state.mode === 'rally') {
+      // ----- keyboard fallback -----
+      if (state.keys['ArrowLeft'])  state.player.x -= PLAYER_SPEED_KEY;
+      if (state.keys['ArrowRight']) state.player.x += PLAYER_SPEED_KEY;
+      state.player.x = clamp(state.player.x, 0, COURT_W - PADDLE_W);
+
+      // ----- cpu AI: track ball.x -----
+      const cpuTarget = state.ball.x - PADDLE_W/2 + BALL_SIZE/2;
+      const cpuSpeed = CPU_BASE_SPEED + Math.min(4, state.score * 0.04);
+      const dx = cpuTarget - state.cpu.x;
+      state.cpu.x += Math.sign(dx) * Math.min(Math.abs(dx), cpuSpeed);
+      state.cpu.x = clamp(state.cpu.x, 0, COURT_W - PADDLE_W);
+
+      // ----- trail update -----
+      state.trail[1] = { ...state.trail[0] };
+      state.trail[0] = { x: state.ball.x, y: state.ball.y };
+
+      // ----- ball move -----
+      state.ball.x += state.ball.vx;
+      state.ball.y += state.ball.vy;
+
+      // side wall bounce (left/right edges in portrait)
+      if (state.ball.x < 0) { state.ball.x = 0; state.ball.vx = -state.ball.vx; }
+      if (state.ball.x > COURT_W - BALL_SIZE) {
+        state.ball.x = COURT_W - BALL_SIZE; state.ball.vx = -state.ball.vx;
+      }
+
+      // ===== player paddle (BOTTOM) — ball going DOWN =====
+      if (state.ball.vy > 0
+          && state.ball.y + BALL_SIZE >= state.player.y
+          && state.ball.y <= state.player.y + PADDLE_H
+          && state.ball.x + BALL_SIZE >= state.player.x
+          && state.ball.x <= state.player.x + PADDLE_W) {
+        state.ball.y = state.player.y - BALL_SIZE;
+        state.ball.speed = Math.min(BALL_MAX, state.ball.speed * BALL_SPEEDUP);
+        const hit = (state.ball.x + BALL_SIZE/2 - (state.player.x + PADDLE_W/2)) / (PADDLE_W/2);
+        const ang = clamp(hit, -1, 1) * Math.PI / 3.5;
+        state.ball.vy = -state.ball.speed * Math.cos(ang);   // upward
+        state.ball.vx =  state.ball.speed * Math.sin(ang);
+        state.score++;
+        state.rally++;
+        flashSwing('p');
+        sfxHit();
+      }
+
+      // ===== cpu paddle (TOP) — ball going UP =====
+      if (state.ball.vy < 0
+          && state.ball.y <= state.cpu.y + PADDLE_H
+          && state.ball.y + BALL_SIZE >= state.cpu.y
+          && state.ball.x + BALL_SIZE >= state.cpu.x
+          && state.ball.x <= state.cpu.x + PADDLE_W) {
+        state.ball.y = state.cpu.y + PADDLE_H;
+        state.ball.speed = Math.min(BALL_MAX, state.ball.speed * BALL_SPEEDUP);
+        const hit = (state.ball.x + BALL_SIZE/2 - (state.cpu.x + PADDLE_W/2)) / (PADDLE_W/2);
+        const ang = clamp(hit, -1, 1) * Math.PI / 3.5
+                  + (Math.random() - 0.5) * 0.3;
+        state.ball.vy =  state.ball.speed * Math.cos(ang);   // downward
+        state.ball.vx =  state.ball.speed * Math.sin(ang);
+        flashSwing('c');
+        sfxCpuHit();
+      }
+
+      // out of bounds
+      if (state.ball.y > COURT_H) {
+        endGame('— you missed the return —');
+      } else if (state.ball.y + BALL_SIZE < 0) {
+        // CPU missed → +10 bonus
+        state.score += 10;
+        showBonus();
+        state.mode = 'pause';
+        state.ball.y = -200;  // hide off-screen
+        setTimeout(() => {
+          if (state.mode === 'pause') startServe('player');
+        }, 1100);
+      }
+    }
+    render();
+    requestAnimationFrame(tick);
+  }
+
+  // ===== boot =====
+  // pre-populate wines with first/second character so they render behind overlay
+  state.playerChar = CHARS[0];
+  state.cpuChar    = CHARS[1];
+  applyChar(playerEl, state.playerChar);
+  applyChar(cpuEl,    state.cpuChar);
+  refreshNickname();
+  updateRenameBtn();
+  render();
+  if (state.nickname) {
+    showSelect();
+  } else {
+    showName();
+  }
+  tick();
+})();
+</script>
+
+</body>
+</html>
