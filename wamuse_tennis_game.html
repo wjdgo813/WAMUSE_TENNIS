@@ -1028,6 +1028,47 @@
     text-align: right;
   }
 
+  /* Game select buttons */
+  .game-select-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(4px, 1vw, 6px);
+    padding: clamp(10px, 2vw, 14px) clamp(12px, 3vw, 16px);
+    background: linear-gradient(135deg, rgba(108,255,108,0.1), rgba(68,136,204,0.1));
+    border: 2px solid rgba(108,255,108,0.3);
+    border-radius: 4px;
+    color: #fff;
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: clamp(11px, 1.5vw, 13px);
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    letter-spacing: 0.5px;
+  }
+
+  .game-select-btn:hover {
+    background: linear-gradient(135deg, rgba(108,255,108,0.2), rgba(68,136,204,0.2));
+    border-color: rgba(108,255,108,0.6);
+    box-shadow: 0 0 8px rgba(108,255,108,0.3);
+  }
+
+  .game-select-btn:active {
+    transform: scale(0.98);
+  }
+
+  .game-select-btn .cn {
+    font-size: clamp(12px, 2vw, 15px);
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+
+  .game-select-btn .co {
+    font-size: clamp(9px, 1vw, 10px);
+    opacity: 0.8;
+    letter-spacing: 0.5px;
+  }
+
   /* Brick breaker */
   .court.brick-mode::before,
   .court.brick-mode::after {
@@ -1274,15 +1315,15 @@
       <p>· choose your game ·</p>
       <p style="margin-top:18px; color: var(--green)">SELECT  GAME</p>
       <div class="char-list">
-        <button class="char-btn" id="btnTennis">
+        <button class="game-select-btn" id="btnTennis">
           <span class="cn" style="color:var(--green)">TENNIS</span>
           <span class="co">ENDLESS RALLY</span>
         </button>
-        <button class="char-btn" id="btnBrick">
+        <button class="game-select-btn" id="btnBrick">
           <span class="cn" style="color:var(--amber)">BRICK BREAK</span>
           <span class="co">10 STAGES · 3 LIVES</span>
         </button>
-        <button class="char-btn" id="gameSelectBackBtn" style="margin-top:8px; opacity:0.7">
+        <button class="game-select-btn" id="gameSelectBackBtn" style="margin-top:8px; opacity:0.7">
           <span class="cn" style="color:var(--gray)">← BACK</span>
         </button>
       </div>
