@@ -1520,16 +1520,16 @@
   const BRICK_OFFSET_X = (COURT_W - BRICK_COLS * (BRICK_W + BRICK_GAP) + BRICK_GAP) / 2;
 
   const STAGE_CONFIGS = [
-    { rows:3, cols:8, pattern:'full',    hpMap:[1],      ballSpeed:8.0, paddleW:90 },
-    { rows:4, cols:8, pattern:'full',    hpMap:[1],      ballSpeed:8.5, paddleW:85 },
-    { rows:4, cols:8, pattern:'gap_mid', hpMap:[1,1,2,1],ballSpeed:9.0, paddleW:80 },
-    { rows:5, cols:8, pattern:'diamond', hpMap:[1,2,2,2,1],ballSpeed:9.5,paddleW:78 },
-    { rows:5, cols:8, pattern:'checker', hpMap:[2],      ballSpeed:10.0, paddleW:75 },
-    { rows:6, cols:8, pattern:'full',    hpMap:[2],      ballSpeed:10.5, paddleW:72 },
-    { rows:6, cols:8, pattern:'center_hard', hpMap:[2,3],ballSpeed:11.0,paddleW:70 },
-    { rows:7, cols:8, pattern:'zigzag',  hpMap:[2],      ballSpeed:11.5, paddleW:68 },
-    { rows:7, cols:8, pattern:'full',    hpMap:[3],      ballSpeed:12.0, paddleW:65 },
-    { rows:8, cols:8, pattern:'boss',    hpMap:[3],      ballSpeed:12.5, paddleW:60 }
+    { rows:3, cols:8, pattern:'full',    hpMap:[1],      ballSpeed:12.0, paddleW:90 },
+    { rows:4, cols:8, pattern:'full',    hpMap:[1],      ballSpeed:13.0, paddleW:85 },
+    { rows:4, cols:8, pattern:'gap_mid', hpMap:[1,1,2,1],ballSpeed:14.0, paddleW:80 },
+    { rows:5, cols:8, pattern:'diamond', hpMap:[1,2,2,2,1],ballSpeed:15.0,paddleW:78 },
+    { rows:5, cols:8, pattern:'checker', hpMap:[2],      ballSpeed:16.0, paddleW:75 },
+    { rows:6, cols:8, pattern:'full',    hpMap:[2],      ballSpeed:17.0, paddleW:72 },
+    { rows:6, cols:8, pattern:'center_hard', hpMap:[2,3],ballSpeed:18.0,paddleW:70 },
+    { rows:7, cols:8, pattern:'zigzag',  hpMap:[2],      ballSpeed:19.0, paddleW:68 },
+    { rows:7, cols:8, pattern:'full',    hpMap:[3],      ballSpeed:20.0, paddleW:65 },
+    { rows:8, cols:8, pattern:'boss',    hpMap:[3],      ballSpeed:21.0, paddleW:60 }
   ];
 
   // ===== AUDIO ENGINE (Web Audio API, chiptune synthesis) =====
@@ -1693,7 +1693,9 @@
       ball: { x: 0, y: 0, vx: 0, vy: 0, active: false },
       paddle: { x: 0, width: 80, height: 112 },
       particles: [],
-      cleared: false
+      cleared: false,
+      swingTime: 0,
+      swingDuration: 150  // ms
     }
   };
 
@@ -2630,6 +2632,7 @@
       const speed = cfg.ballSpeed;
       ball.vy = -speed * Math.cos(ang);
       ball.vx =  speed * Math.sin(ang);
+      state.brick.swingTime = Date.now();
       flashSwing('p');
       sfxHit();
     }
@@ -2669,7 +2672,25 @@
     const px = state.brick.paddle.x;
     const py = COURT_H - 112 - 10;
 
-    // Draw racket
+    // Save canvas state for rotation
+    brickCtx.save();
+
+    // Calculate swing animation progress
+    const now = Date.now();
+    const timeSinceSwing = now - state.brick.swingTime;
+    const swingProgress = Math.min(1, Math.max(0, timeSinceSwing / state.brick.swingDuration));
+
+    // Swing animation: rotate up to 45 degrees then back to 18 degrees
+    let swingRotation = 18;
+    if (swingProgress < 0.5) {
+      // First half: rotate from 18 to 45 degrees
+      swingRotation = 18 + (45 - 18) * (swingProgress * 2);
+    } else {
+      // Second half: rotate back from 45 to 18 degrees
+      swingRotation = 45 - (45 - 18) * ((swingProgress - 0.5) * 2);
+    }
+
+    // Draw racket with dynamic rotation
     const racketLines = [
       "   |",
       "   |",
@@ -2678,9 +2699,19 @@
       " \\###/",
       "  ___"
     ];
+
+    const racketStartX = px + 20;
+    const racketStartY = py - 50;
+
+    brickCtx.translate(racketStartX, racketStartY + 24);
+    brickCtx.rotate(swingRotation * Math.PI / 180);
+    brickCtx.translate(-racketStartX, -(racketStartY + 24));
+
     racketLines.forEach((line, i) => {
-      brickCtx.fillText(line, px, py - 50 + i * 8);
+      brickCtx.fillText(line, racketStartX - 20, racketStartY + i * 8);
     });
+
+    brickCtx.restore();
 
     // Draw bottle
     lines.forEach((line, i) => {
