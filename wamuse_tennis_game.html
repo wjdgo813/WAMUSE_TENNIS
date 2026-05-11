@@ -2172,6 +2172,7 @@
     updateStatsDisplay();
   }
   function newGame() {
+    hideAllOverlays();
     state.score = 0;
     state.rally = 0;
     state.player.x = (COURT_W - PADDLE_W) / 2;
