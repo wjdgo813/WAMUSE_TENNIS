@@ -1054,6 +1054,13 @@
     </div>
   </div>
 
+  <div class="hud hidden" id="brickHud">
+    <div class="seg"><label>STAGE</label><span class="val amber" id="brickStageVal">01</span></div>
+    <div class="seg"><label>SCORE</label><span class="val" id="brickScoreVal">0000</span></div>
+    <div class="seg"><label>LIVES</label><span class="val red" id="brickLivesVal">3</span></div>
+    <div class="seg"><label>BRICKS</label><span class="val" id="brickCountVal">000</span></div>
+  </div>
+
   <div class="court" id="court">
 
     <div class="court-label top">CPU <span class="npc">[ LABET · FRANCE ]</span></div>
@@ -1211,6 +1218,58 @@
       <div class="countdown" id="cdNum">3</div>
     </div>
 
+    <!-- Game selection overlay -->
+    <div class="overlay hidden" id="gameSelectOverlay">
+      <h1>WAMUSE</h1>
+      <p>· choose your game ·</p>
+      <p style="margin-top:18px; color: var(--green)">SELECT  GAME</p>
+      <div class="char-list">
+        <button class="char-btn" id="btnTennis">
+          <span class="cn" style="color:var(--green)">TENNIS</span>
+          <span class="co">ENDLESS RALLY</span>
+        </button>
+        <button class="char-btn" id="btnBrick">
+          <span class="cn" style="color:var(--amber)">BRICK BREAK</span>
+          <span class="co">10 STAGES · 3 LIVES</span>
+        </button>
+        <button class="char-btn" id="gameSelectBackBtn" style="margin-top:8px; opacity:0.7">
+          <span class="cn" style="color:var(--gray)">← BACK</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Brick game over overlay -->
+    <div class="overlay hidden" id="brickOverOverlay">
+      <h1 class="dead" id="brickOverTitle">GAME OVER</h1>
+      <p id="brickOverReason">— lost all lives —</p>
+      <div class="stats">
+        <div class="s"><label>STAGE</label><span class="v amber" id="brickOverStage">01</span></div>
+        <div class="s"><label>SCORE</label><span class="v" id="brickOverScore">0000</span></div>
+        <div class="s"><label>BEST</label><span class="v" id="brickOverBest">01</span></div>
+      </div>
+      <div style="margin-top:16px; width:100%; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <button class="overlay-btn" id="brickRetryBtn" style="margin-top:0;">RETRY</button>
+        <button class="overlay-btn" id="brickRankingBtn" style="margin-top:0;">RANKING</button>
+        <button class="overlay-btn" id="brickChangeGameBtn" style="margin-top:0;">CHANGE</button>
+      </div>
+    </div>
+
+    <!-- Brick ranking overlay -->
+    <div class="overlay hidden" id="brickRankingOverlay">
+      <h1>BRICK</h1>
+      <p style="color:var(--amber)">STAGE RANKING</p>
+      <div class="ranking-list" id="brickRankingList"></div>
+      <p class="pulse" style="margin-top:18px">TAP TO CLOSE</p>
+    </div>
+
+    <!-- Brick canvas -->
+    <canvas id="brickCanvas" style="
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      display:none; z-index:2;
+      image-rendering:pixelated;
+    "></canvas>
+
   </div>
 
   <div class="banner">
@@ -1224,7 +1283,7 @@
   </div>
 
   <div class="hint">
-    <span><b>DRAG</b> wine left/right · 1 hit = +1 · CPU miss = +10 · you miss = over</span>
+    <span id="hintText"><b>DRAG</b> wine left/right · 1 hit = +1 · CPU miss = +10 · you miss = over</span>
   </div>
 
 </div>
@@ -1296,6 +1355,31 @@
   const statAccuracy = document.getElementById('statAccuracy');
   const leaderName = document.getElementById('leaderName');
   const leaderScore = document.getElementById('leaderScore');
+  const hintText = document.getElementById('hintText');
+
+  // Brick breaker elements
+  const gameSelectOv = document.getElementById('gameSelectOverlay');
+  const btnTennis = document.getElementById('btnTennis');
+  const btnBrick = document.getElementById('btnBrick');
+  const gameSelectBackBtn = document.getElementById('gameSelectBackBtn');
+  const brickCanvas = document.getElementById('brickCanvas');
+  let brickCtx = null;
+  const brickOverOv = document.getElementById('brickOverOverlay');
+  const brickOverTitle = document.getElementById('brickOverTitle');
+  const brickOverReason = document.getElementById('brickOverReason');
+  const brickOverStage = document.getElementById('brickOverStage');
+  const brickOverScore = document.getElementById('brickOverScore');
+  const brickOverBest = document.getElementById('brickOverBest');
+  const brickRetryBtn = document.getElementById('brickRetryBtn');
+  const brickRankingBtn = document.getElementById('brickRankingBtn');
+  const brickChangeGameBtn = document.getElementById('brickChangeGameBtn');
+  const brickRankingOv = document.getElementById('brickRankingOverlay');
+  const brickRankingList = document.getElementById('brickRankingList');
+  const brickHud = document.getElementById('brickHud');
+  const brickStageVal = document.getElementById('brickStageVal');
+  const brickScoreVal = document.getElementById('brickScoreVal');
+  const brickLivesVal = document.getElementById('brickLivesVal');
+  const brickCountVal = document.getElementById('brickCountVal');
 
   // ===== CHARACTERS =====
   // label is exactly 9 chars to fit body inner width
@@ -1336,6 +1420,26 @@
     labelTop.innerHTML = `CPU <span style="color:${c.color}; text-shadow:0 0 6px ${c.color}80">[ ${c.name.toUpperCase()} · ${c.country} ]</span>`;
     labelBot.innerHTML = `<span style="color:${p.color}; text-shadow:0 0 6px ${p.color}80">[ ${p.name.toUpperCase()} · ${p.country} ]</span> ${playerTag}`;
   }
+
+  // ===== BRICK BREAKER CONSTANTS =====
+  const BRICK_COLS = 8;
+  const BRICK_W = 40;
+  const BRICK_H = 16;
+  const BRICK_GAP = 4;
+  const BRICK_OFFSET_X = (COURT_W - BRICK_COLS * (BRICK_W + BRICK_GAP) + BRICK_GAP) / 2;
+
+  const STAGE_CONFIGS = [
+    { rows:3, cols:8, pattern:'full',    hpMap:[1],      ballSpeed:5.0, paddleW:90 },
+    { rows:4, cols:8, pattern:'full',    hpMap:[1],      ballSpeed:5.5, paddleW:85 },
+    { rows:4, cols:8, pattern:'gap_mid', hpMap:[1,1,2,1],ballSpeed:6.0, paddleW:80 },
+    { rows:5, cols:8, pattern:'diamond', hpMap:[1,2,2,2,1],ballSpeed:6.5,paddleW:78 },
+    { rows:5, cols:8, pattern:'checker', hpMap:[2],      ballSpeed:7.0, paddleW:75 },
+    { rows:6, cols:8, pattern:'full',    hpMap:[2],      ballSpeed:7.5, paddleW:72 },
+    { rows:6, cols:8, pattern:'center_hard', hpMap:[2,3],ballSpeed:8.0,paddleW:70 },
+    { rows:7, cols:8, pattern:'zigzag',  hpMap:[2],      ballSpeed:8.5, paddleW:68 },
+    { rows:7, cols:8, pattern:'full',    hpMap:[3],      ballSpeed:9.0, paddleW:65 },
+    { rows:8, cols:8, pattern:'boss',    hpMap:[3],      ballSpeed:9.5, paddleW:60 }
+  ];
 
   // ===== AUDIO ENGINE (Web Audio API, chiptune synthesis) =====
   let audioCtx = null;
@@ -1467,7 +1571,7 @@
 
   // ===== state =====
   const state = {
-    mode: 'idle',  // name | select | counting | rally | pause | over
+    mode: 'idle',  // name | select | counting | rally | pause | over | gameSelect | brick-counting | brick-playing | brick-stageClear | brick-over
     score: 0,
     rally: 0,
     high: parseInt(localStorage.getItem('wamuse-tennis-high') || '0', 10),
@@ -1488,6 +1592,17 @@
       ballSpeedSamples: 0,
       startTime: 0,
       missCount: 0
+    },
+    brick: {
+      stage: 1,
+      lives: 3,
+      score: 0,
+      bestStage: parseInt(localStorage.getItem('wamuse-brick-best-stage') || '1', 10),
+      bricks: [],
+      ball: { x: 0, y: 0, vx: 0, vy: 0, active: false },
+      paddle: { x: 0, width: 80, height: 112 },
+      particles: [],
+      cleared: false
     }
   };
 
