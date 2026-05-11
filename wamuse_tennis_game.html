@@ -2113,8 +2113,7 @@
     e.stopPropagation();
     primeAudio();
     // Restore tennis elements
-    playerEl.classList.remove('swing-r');
-    playerEl.style.display = 'none';
+    playerEl.style.display = '';
     cpuEl.style.display = '';
     ballEl.style.display = '';
     trailEls.forEach(t => t.style.display = '');
@@ -2390,14 +2389,11 @@
     // Hide all overlays
     hideAllOverlays();
 
-    // Hide tennis elements but keep player for paddle
+    // Hide tennis elements
+    playerEl.style.display = 'none';
     cpuEl.style.display = 'none';
     ballEl.style.display = 'none';
     trailEls.forEach(t => t.style.display = 'none');
-
-    // Keep playerEl visible for paddle
-    playerEl.style.display = '';
-
     courtEl.classList.add('brick-mode');
     brickCanvas.style.display = 'block';
     brickCtx = brickCanvas.getContext('2d');
@@ -2612,10 +2608,6 @@
     const paddle = state.brick.paddle;
     const cfg = STAGE_CONFIGS[state.brick.stage - 1];
 
-    // Update player position to match paddle
-    const paddleY = COURT_H - paddle.height - 10;
-    setPos(playerEl, paddle.x, paddleY);
-
     if (!ball.active) return;
 
     // Ball movement
@@ -2777,6 +2769,7 @@
   function renderBrick() {
     brickCtx.clearRect(0, 0, COURT_W, COURT_H);
     drawBricks();
+    drawBrickPaddle();
     drawBrickBall();
     drawBrickParticles();
 
