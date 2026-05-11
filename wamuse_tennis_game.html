@@ -20,12 +20,62 @@
     /* virtual court size — JS uses these as game coords */
     --court-w: 360px;
     --court-h: 600px;
+
+    /* responsive sizing */
+    --scale: 1;
+    --font-size-banner: 24px;
+    --font-size-h1: 36px;
+    --font-size-hud-val: 16px;
+    --font-size-hud-label: 9px;
+    --font-size-hint: 10px;
+    --font-size-overlay-p: 11px;
+    --font-size-court-label: 9px;
+  }
+
+  /* Small phones (320px - 480px) */
+  @media (max-width: 480px) {
+    :root {
+      --font-size-banner: 18px;
+      --font-size-h1: 28px;
+      --font-size-hud-val: 12px;
+      --font-size-hud-label: 7px;
+      --font-size-hint: 8px;
+      --font-size-overlay-p: 9px;
+      --font-size-court-label: 8px;
+    }
+    body { padding: 4px env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  }
+
+  /* Medium phones (481px - 768px) */
+  @media (min-width: 481px) and (max-width: 768px) {
+    :root {
+      --font-size-banner: 22px;
+      --font-size-h1: 32px;
+      --font-size-hud-val: 14px;
+      --font-size-hud-label: 8px;
+      --font-size-hint: 9px;
+      --font-size-overlay-p: 10px;
+      --font-size-court-label: 8px;
+    }
+  }
+
+  /* Tablets and larger (769px+) */
+  @media (min-width: 769px) {
+    :root {
+      --font-size-banner: 28px;
+      --font-size-h1: 42px;
+      --font-size-hud-val: 18px;
+      --font-size-hud-label: 10px;
+      --font-size-hint: 11px;
+      --font-size-overlay-p: 12px;
+      --font-size-court-label: 10px;
+    }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0;
     width: 100%;
-    min-height: 100%;
+    height: 100%;
     background: #050a05;
     color: var(--green-fg);
     font-family: 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
@@ -41,7 +91,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    padding: clamp(4px, 1vw, 12px) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    min-height: 100%;
+    min-height: 100dvh;
   }
 
   /* CRT scanlines + vignette */
@@ -68,32 +120,107 @@
   .stage {
     width: 100%;
     max-width: 380px;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - clamp(8px, 2vw, 24px));
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: clamp(4px, 2vw, 12px);
+    overflow: hidden;
   }
 
   /* ===== HUD ===== */
   .hud {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
+    gap: clamp(2px, 1vw, 6px);
     color: var(--grey);
     border: 1px solid var(--green-dim);
     background: #061306;
-    padding: 6px 8px;
+    padding: clamp(4px, 1.5vw, 8px) clamp(6px, 2vw, 12px);
   }
-  .seg { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .seg label { color: var(--grey); font-size: 9px; letter-spacing: 2px; }
+  .seg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1px, 0.5vw, 3px);
+    min-height: clamp(40px, 8vw, 60px);
+  }
+  .seg label { color: var(--grey); font-size: var(--font-size-hud-label); letter-spacing: clamp(1px, 0.5vw, 3px); }
   .seg .val {
     color: var(--green);
-    font-size: 16px;
+    font-size: clamp(18px, 2.5vw, 28px);
     font-weight: bold;
     text-shadow: 0 0 6px rgba(108,255,108,0.6);
-    line-height: 1;
+    line-height: 1.2;
   }
   .seg .val.amber { color: var(--amber); text-shadow: 0 0 6px rgba(255,204,68,0.6); }
   .seg .val.red   { color: var(--red);   text-shadow: 0 0 6px rgba(255,85,102,0.6); }
+
+  /* Leader display */
+  .leader-seg { gap: clamp(2px, 0.8vw, 4px); }
+  .leader-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(4px, 1vw, 8px);
+    min-height: clamp(16px, 2.5vw, 24px);
+    background: rgba(255, 204, 68, 0.15);
+    border: 1px solid rgba(255, 204, 68, 0.4);
+    border-radius: clamp(4px, 1vw, 6px);
+    padding: clamp(4px, 0.8vw, 6px) clamp(6px, 1.2vw, 10px);
+    box-shadow: 0 0 12px rgba(255, 204, 68, 0.3);
+  }
+  .crown {
+    font-size: clamp(12px, 2vw, 16px);
+    animation: crownPulse 2s ease-in-out infinite;
+  }
+  .leader-name {
+    color: var(--amber);
+    font-size: clamp(9px, 1.5vw, 12px);
+    font-weight: bold;
+    letter-spacing: clamp(0.5px, 0.3vw, 2px);
+    text-shadow: 0 0 6px rgba(255,204,68,0.6);
+    white-space: nowrap;
+  }
+  .leader-score {
+    color: var(--green);
+    font-size: clamp(9px, 1.5vw, 12px);
+    font-weight: bold;
+    text-shadow: 0 0 6px rgba(108,255,108,0.6);
+    white-space: nowrap;
+  }
+
+  @keyframes crownPulse {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.15) rotate(3deg); }
+  }
+
+  /* ===== Particle explosion ===== */
+  .particle {
+    position: absolute;
+    width: clamp(6px, 1.2vw, 14px);
+    height: clamp(6px, 1.2vw, 14px);
+    background: var(--amber);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--amber), 0 0 24px rgba(255, 204, 68, 0.8);
+    pointer-events: none;
+    animation: particleExplode 0.5s ease-out forwards;
+    z-index: 10;
+  }
+
+  @keyframes particleExplode {
+    0% {
+      transform: translate(0, 0) scale(1);
+      opacity: 1;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--tx), var(--ty)) scale(0);
+      opacity: 0;
+    }
+  }
 
   /* ===== Court ===== */
   .court {
@@ -183,14 +310,14 @@
   /* CPU/P1 corner labels */
   .court-label {
     position: absolute;
-    font-size: 9px;
-    letter-spacing: 2px;
+    font-size: var(--font-size-court-label);
+    letter-spacing: clamp(0.5px, 0.3vw, 3px);
     color: var(--grey);
     z-index: 4;
     pointer-events: none;
   }
-  .court-label.top    { top: 4px;    left: 8px; }
-  .court-label.bottom { bottom: 4px; right: 8px; }
+  .court-label.top    { top: clamp(2px, 1vw, 6px);    left: clamp(4px, 1.5vw, 10px); }
+  .court-label.bottom { bottom: clamp(2px, 1vw, 6px); right: clamp(4px, 1.5vw, 10px); }
   .court-label .you { color: var(--red);   text-shadow: 0 0 5px rgba(255,85,102,0.5); }
   .court-label .npc { color: var(--amber); text-shadow: 0 0 5px rgba(255,204,68,0.5); }
 
@@ -244,18 +371,44 @@
     transform-origin: 100% 0%;
   }
 
+  /* racket swing effect */
+  .wine.swing-r #player pre.racket {
+    animation: racketSwingR 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 0 12px rgba(255,255,100,0.8));
+  }
+  .wine.swing-l #cpu pre.racket {
+    animation: racketSwingL 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: drop-shadow(0 0 12px rgba(255,255,100,0.8));
+  }
+  @keyframes racketSwingR {
+    0%   { transform: rotate(18deg) scaleY(1); }
+    40%  { transform: rotate(-42deg) scaleY(1.15); filter: brightness(1.5); }
+    100% { transform: rotate(18deg) scaleY(1); }
+  }
+  @keyframes racketSwingL {
+    0%   { transform: rotate(-18deg) scaleY(1); }
+    40%  { transform: rotate(42deg) scaleY(1.15); filter: brightness(1.5); }
+    100% { transform: rotate(-18deg) scaleY(1); }
+  }
+
   /* swing flash on hit */
-  .wine.swing-r { animation: swingR 0.18s ease-out; }
-  .wine.swing-l { animation: swingL 0.18s ease-out; }
+  .wine.swing-r {
+    animation: swingR 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    filter: drop-shadow(0 0 8px rgba(108,255,108,0.8));
+  }
+  .wine.swing-l {
+    animation: swingL 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    filter: drop-shadow(0 0 8px rgba(108,255,108,0.8));
+  }
   @keyframes swingR {
-    0%   { transform: translate(var(--tx,0), var(--ty,0)) rotate(0); }
-    50%  { transform: translate(var(--tx,0), var(--ty,0)) rotate(-22deg); }
-    100% { transform: translate(var(--tx,0), var(--ty,0)) rotate(0); }
+    0%   { transform: translate(var(--tx,0), var(--ty,0)) rotate(0) scaleX(1); }
+    40%  { transform: translate(var(--tx,0), var(--ty,0)) rotate(-45deg) scaleX(1.1); filter: brightness(1.3); }
+    100% { transform: translate(var(--tx,0), var(--ty,0)) rotate(0) scaleX(1); }
   }
   @keyframes swingL {
-    0%   { transform: translate(var(--tx,0), var(--ty,0)) rotate(0); }
-    50%  { transform: translate(var(--tx,0), var(--ty,0)) rotate(22deg); }
-    100% { transform: translate(var(--tx,0), var(--ty,0)) rotate(0); }
+    0%   { transform: translate(var(--tx,0), var(--ty,0)) rotate(0) scaleX(1); }
+    40%  { transform: translate(var(--tx,0), var(--ty,0)) rotate(45deg) scaleX(1.1); filter: brightness(1.3); }
+    100% { transform: translate(var(--tx,0), var(--ty,0)) rotate(0) scaleX(1); }
   }
 
   /* ===== Ball + trail ===== */
@@ -263,26 +416,56 @@
     position: absolute;
     top: 0; left: 0;
     width: 12px; height: 12px;
-    background: var(--amber);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #ffd966, #e6b800, #cc9900);
     box-shadow:
-      0 0 0 2px #000,
+      inset -1px -1px 2px rgba(0,0,0,0.4),
+      inset 1px 1px 2px rgba(255,255,255,0.3),
       0 0 8px var(--amber),
       0 0 18px rgba(255,204,68,0.7);
     will-change: transform;
     z-index: 5;
+    overflow: hidden;
+  }
+  .ball::before {
+    content: '';
+    position: absolute;
+    top: 2px; left: 1px;
+    width: 3px; height: 6px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.6;
+  }
+  .ball::after {
+    content: '';
+    position: absolute;
+    top: 2px; right: 1px;
+    width: 3px; height: 6px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.6;
   }
   .trail {
     position: absolute;
     top: 0; left: 0;
-    width: 6px; height: 6px;
-    background: var(--amber);
-    opacity: 0.35;
-    margin: 3px;
+    width: clamp(8px, 1.5vw, 12px);
+    height: clamp(8px, 1.5vw, 12px);
+    background: radial-gradient(circle, var(--amber), #e6b800);
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255, 204, 68, 0.6);
+    margin: clamp(2px, 0.5vw, 3px);
     will-change: transform;
     z-index: 4;
   }
-  .trail.t2 { opacity: 0.18; }
-  .trail.t3 { opacity: 0.08; }
+  .trail.t2 { opacity: 0.32; }
+  .trail.t3 { opacity: 0.24; }
+  .trail.t4 { opacity: 0.18; }
+  .trail.t5 { opacity: 0.13; }
+  .trail.t6 { opacity: 0.10; }
+  .trail.t7 { opacity: 0.07; }
+  .trail.t8 { opacity: 0.05; }
+  .trail.t9 { opacity: 0.03; }
+  .trail.t10 { opacity: 0.01; }
 
   /* ===== Overlays ===== */
   .overlay {
@@ -292,18 +475,18 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: clamp(6px, 2vw, 12px);
     background: rgba(5, 12, 5, 0.9);
     z-index: 50;
     text-align: center;
     color: var(--green);
-    padding: 16px;
+    padding: clamp(12px, 3vw, 20px);
   }
   .overlay.hidden { display: none; }
   .overlay h1 {
     margin: 0;
-    font-size: 36px;
-    letter-spacing: 10px;
+    font-size: var(--font-size-h1);
+    letter-spacing: clamp(6px, 2vw, 14px);
     font-weight: bold;
     text-shadow: 0 0 14px rgba(108,255,108,0.8);
   }
@@ -311,8 +494,8 @@
   .overlay p {
     margin: 0;
     color: var(--green-fg);
-    letter-spacing: 3px;
-    font-size: 11px;
+    letter-spacing: clamp(1px, 0.5vw, 4px);
+    font-size: var(--font-size-overlay-p);
   }
   .overlay .pulse { animation: pulse 1s infinite alternate; }
   @keyframes pulse {
@@ -320,15 +503,15 @@
     to   { opacity: 1.0; }
   }
   .overlay .stats {
-    margin-top: 12px;
+    margin-top: clamp(8px, 2vw, 14px);
     display: flex;
-    gap: 24px;
+    gap: clamp(12px, 3vw, 28px);
   }
-  .overlay .stats .s { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .overlay .stats .s label { color: var(--grey); font-size: 10px; letter-spacing: 2px; }
+  .overlay .stats .s { display: flex; flex-direction: column; align-items: center; gap: clamp(1px, 0.5vw, 3px); }
+  .overlay .stats .s label { color: var(--grey); font-size: clamp(8px, 1.5vw, 12px); letter-spacing: clamp(1px, 0.5vw, 3px); }
   .overlay .stats .s .v {
     color: var(--green);
-    font-size: 24px;
+    font-size: clamp(18px, 3vw, 28px);
     font-weight: bold;
     text-shadow: 0 0 8px rgba(108,255,108,0.6);
   }
@@ -336,7 +519,7 @@
 
   /* countdown */
   .countdown {
-    font-size: 96px;
+    font-size: clamp(64px, 20vw, 120px);
     font-weight: bold;
     color: var(--amber);
     text-shadow: 0 0 22px rgba(255,204,68,0.8);
@@ -362,14 +545,14 @@
     z-index: 30;
     pointer-events: none;
   }
-  .bonus .num { font-size: 56px; letter-spacing: 8px; }
+  .bonus .num { font-size: clamp(36px, 12vw, 64px); letter-spacing: clamp(4px, 1.5vw, 10px); }
   .bonus .sub {
     display: block;
-    font-size: 13px;
-    letter-spacing: 4px;
+    font-size: clamp(10px, 1.8vw, 14px);
+    letter-spacing: clamp(2px, 0.8vw, 5px);
     color: var(--amber);
     text-shadow: 0 0 6px rgba(255,204,68,0.7);
-    margin-top: 6px;
+    margin-top: clamp(4px, 1vw, 8px);
   }
   .bonus.hidden { display: none; }
   .bonus.show { animation: bonusFade 1.1s ease-out forwards; }
@@ -380,14 +563,70 @@
     100% { transform: scale(1.0)  translateY(-40px); opacity: 0; }
   }
 
+  .combo-alert {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 35;
+    pointer-events: none;
+  }
+  .combo-alert .combo-text {
+    font-size: clamp(28px, 8vw, 48px);
+    font-weight: bold;
+    color: var(--amber);
+    letter-spacing: clamp(3px, 1vw, 8px);
+    text-shadow:
+      0 0 12px rgba(255,204,68,0.8),
+      0 0 24px rgba(255,204,68,0.5),
+      0 0 36px rgba(255,204,68,0.3);
+    text-transform: uppercase;
+    animation: comboTextPulse 1.4s ease-in-out forwards;
+  }
+  .combo-alert .combo-number {
+    font-size: clamp(32px, 10vw, 64px);
+    font-weight: bold;
+    color: var(--green);
+    letter-spacing: clamp(2px, 0.8vw, 6px);
+    text-shadow:
+      0 0 16px rgba(108,255,108,0.9),
+      0 0 32px rgba(108,255,108,0.5),
+      0 0 48px rgba(108,255,108,0.3);
+    margin-top: clamp(4px, 0.8vw, 8px);
+    animation: comboNumberPulse 1.4s ease-in-out forwards;
+  }
+  .combo-alert.hidden { display: none; }
+  .combo-alert.show { animation: comboFade 1.4s ease-in-out forwards; }
+  @keyframes comboFade {
+    0%   { transform: translate(-50%, -50%) scale(0) rotate(-20deg); opacity: 0; }
+    25%  { transform: translate(-50%, -50%) scale(1.15) rotate(8deg);  opacity: 1; }
+    50%  { transform: translate(-50%, -50%) scale(1.0) rotate(0);      opacity: 1; }
+    75%  { transform: translate(-50%, -50%) scale(1.05) rotate(-5deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.8) rotate(0);      opacity: 0; }
+  }
+  @keyframes comboTextPulse {
+    0%   { opacity: 0; }
+    20%  { opacity: 1; }
+    80%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes comboNumberPulse {
+    0%   { opacity: 0; filter: brightness(1.5); }
+    20%  { opacity: 1; filter: brightness(1.2); }
+    50%  { opacity: 1; filter: brightness(1.0); }
+    80%  { opacity: 1; filter: brightness(1.1); }
+    100% { opacity: 0; filter: brightness(0.8); }
+  }
+
   /* ===== WAMUSE banner — flashy shimmer + sparkles ===== */
   .banner {
     position: relative;
     text-align: center;
-    font-size: 24px;
-    letter-spacing: 12px;
+    font-size: var(--font-size-banner);
+    letter-spacing: clamp(6px, 2vw, 14px);
     font-weight: bold;
-    padding: 12px 0 8px;
+    padding: clamp(8px, 1.5vw, 14px) 0 clamp(4px, 1vw, 8px);
   }
   .banner::before {
     content: '';
@@ -428,7 +667,7 @@
   }
   .sparkle {
     position: absolute;
-    font-size: 14px;
+    font-size: clamp(10px, 2vw, 16px);
     text-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
     pointer-events: none;
     opacity: 0;
@@ -466,8 +705,9 @@
   .hint {
     text-align: center;
     color: var(--grey);
-    font-size: 10px;
-    letter-spacing: 2px;
+    font-size: var(--font-size-hint);
+    letter-spacing: clamp(1px, 0.5vw, 3px);
+    padding: 0 clamp(8px, 2vw, 16px);
   }
   .hint b { color: var(--green); font-weight: normal; }
 
@@ -477,14 +717,14 @@
     border: 1px solid var(--green-dim);
     color: var(--green);
     font-family: inherit;
-    font-size: 20px;
-    padding: 10px 16px;
-    width: 240px;
+    font-size: clamp(16px, 3vw, 22px);
+    padding: clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 18px);
+    width: clamp(200px, 70vw, 260px);
     text-align: center;
-    letter-spacing: 4px;
+    letter-spacing: clamp(2px, 0.8vw, 5px);
     outline: none;
     text-shadow: 0 0 8px rgba(108,255,108,0.5);
-    margin: 14px 0 4px;
+    margin: clamp(10px, 2vw, 16px) 0 clamp(2px, 0.5vw, 5px);
     -webkit-appearance: none;
     border-radius: 0;
     caret-color: var(--green);
@@ -492,7 +732,7 @@
   .overlay input.name-input::placeholder {
     color: var(--grey);
     text-shadow: none;
-    letter-spacing: 3px;
+    letter-spacing: clamp(1px, 0.5vw, 4px);
   }
   .overlay input.name-input:focus {
     border-color: var(--green);
@@ -504,12 +744,12 @@
     border: 1px solid var(--green);
     color: var(--green);
     font-family: inherit;
-    font-size: 14px;
-    padding: 8px 28px;
-    letter-spacing: 6px;
+    font-size: clamp(12px, 2vw, 16px);
+    padding: clamp(6px, 1.2vw, 10px) clamp(20px, 4vw, 32px);
+    letter-spacing: clamp(3px, 1vw, 7px);
     cursor: pointer;
     font-weight: bold;
-    margin-top: 10px;
+    margin-top: clamp(8px, 1.5vw, 12px);
     -webkit-tap-highlight-color: transparent;
     text-shadow: 0 0 6px rgba(108,255,108,0.5);
   }
@@ -522,14 +762,14 @@
   .char-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 14px;
+    gap: clamp(6px, 1.5vw, 10px);
+    margin-top: clamp(10px, 2vw, 16px);
   }
   .char-btn {
     background: rgba(13, 19, 13, 0.6);
     border: 1px solid var(--green-dim);
-    padding: 10px 16px;
-    width: 220px;
+    padding: clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 18px);
+    width: clamp(180px, 60vw, 240px);
     cursor: pointer;
     font-family: inherit;
     -webkit-tap-highlight-color: transparent;
@@ -537,17 +777,17 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: clamp(2px, 0.5vw, 4px);
     transition: transform 0.08s ease;
   }
   .char-btn .cn {
-    font-size: 16px;
+    font-size: clamp(14px, 2.5vw, 18px);
     font-weight: bold;
-    letter-spacing: 4px;
+    letter-spacing: clamp(2px, 0.8vw, 5px);
   }
   .char-btn .co {
-    font-size: 9px;
-    letter-spacing: 2px;
+    font-size: clamp(7px, 1.2vw, 10px);
+    letter-spacing: clamp(1px, 0.5vw, 3px);
     color: var(--grey);
   }
   .char-btn.red          { border-color: rgba(255,85,102,0.5); }
@@ -567,28 +807,28 @@
   .player-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 0 4px;
-    font-size: 10px;
-    letter-spacing: 2px;
+    gap: clamp(6px, 1.5vw, 12px);
+    padding: 0 clamp(2px, 1vw, 6px);
+    font-size: clamp(8px, 1.5vw, 11px);
+    letter-spacing: clamp(1px, 0.5vw, 3px);
     color: var(--grey);
   }
   .player-bar .ptag b {
     color: var(--green);
     font-weight: normal;
     text-shadow: 0 0 6px rgba(108,255,108,0.5);
-    margin-left: 6px;
-    letter-spacing: 3px;
+    margin-left: clamp(4px, 1vw, 8px);
+    letter-spacing: clamp(1px, 0.5vw, 4px);
   }
   .rename-btn {
     background: transparent;
     border: 1px solid var(--red);
     color: var(--red);
     font-family: inherit;
-    font-size: 9px;
+    font-size: clamp(7px, 1.2vw, 10px);
     font-weight: bold;
-    letter-spacing: 2px;
-    padding: 3px 8px;
+    letter-spacing: clamp(1px, 0.5vw, 3px);
+    padding: clamp(2px, 0.5vw, 4px) clamp(6px, 1vw, 10px);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     text-shadow: 0 0 6px rgba(255,85,102,0.55);
@@ -605,16 +845,16 @@
   /* mute button */
   .mute-btn {
     position: fixed;
-    top: 10px;
-    right: 10px;
+    top: clamp(6px, 2vw, 14px);
+    right: clamp(6px, 2vw, 14px);
     background: rgba(13, 19, 13, 0.85);
     border: 1px solid var(--green-dim);
     color: var(--green);
     font-family: inherit;
-    font-size: 14px;
+    font-size: clamp(12px, 2vw, 16px);
     letter-spacing: 1px;
-    width: 38px;
-    height: 30px;
+    width: clamp(32px, 8vw, 42px);
+    height: clamp(26px, 6vw, 34px);
     padding: 0;
     cursor: pointer;
     z-index: 300;
@@ -625,6 +865,167 @@
     color: var(--grey);
     border-color: var(--grey);
     text-shadow: none;
+  }
+
+  /* ===== overlay buttons ===== */
+  .overlay-btn {
+    background: rgba(108,255,108,0.1);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: inherit;
+    font-size: clamp(12px, 2vw, 16px);
+    padding: clamp(6px, 1.2vw, 10px) clamp(20px, 4vw, 32px);
+    letter-spacing: clamp(3px, 1vw, 7px);
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: clamp(8px, 1.5vw, 12px);
+    -webkit-tap-highlight-color: transparent;
+    text-shadow: 0 0 6px rgba(108,255,108,0.5);
+    transition: transform 0.08s ease;
+  }
+  .overlay-btn:active {
+    background: rgba(108,255,108,0.2);
+    transform: scale(0.97);
+  }
+
+  /* ===== ranking list ===== */
+  .ranking-list {
+    width: 100%;
+    max-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(6px, 1.5vw, 10px);
+    margin: clamp(12px, 2vw, 18px) 0;
+  }
+  .ranking-item {
+    background: rgba(13, 19, 13, 0.6);
+    border: 1px solid var(--green-dim);
+    padding: clamp(8px, 1.5vw, 12px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: clamp(11px, 1.8vw, 14px);
+    letter-spacing: clamp(1px, 0.5vw, 3px);
+  }
+  .ranking-item.top1 {
+    background: rgba(255,204,68,0.1);
+    border-color: rgba(255,204,68,0.5);
+  }
+  .ranking-item.top2 {
+    background: rgba(192,192,192,0.1);
+    border-color: rgba(192,192,192,0.5);
+  }
+  .ranking-item.top3 {
+    background: rgba(205,127,50,0.1);
+    border-color: rgba(205,127,50,0.5);
+  }
+  .ranking-item .rank-medal {
+    font-size: clamp(14px, 2vw, 18px);
+    margin-right: clamp(4px, 1vw, 8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+  }
+  .ranking-item .rank-num {
+    color: var(--amber);
+    font-weight: bold;
+    min-width: 30px;
+    text-align: center;
+  }
+  .ranking-item.top1 .rank-num {
+    color: var(--amber);
+    text-shadow: 0 0 8px rgba(255,204,68,0.6);
+  }
+  .ranking-item.top2 .rank-num {
+    color: #c0c0c0;
+    text-shadow: 0 0 8px rgba(192,192,192,0.6);
+  }
+  .ranking-item.top3 .rank-num {
+    color: #cd7f32;
+    text-shadow: 0 0 8px rgba(205,127,50,0.6);
+  }
+  .ranking-item .rank-name {
+    flex: 1;
+    color: var(--green-fg);
+    text-align: left;
+    margin: 0 clamp(8px, 2vw, 14px);
+  }
+  .ranking-item .rank-score {
+    color: var(--green);
+    font-weight: bold;
+    text-shadow: 0 0 6px rgba(108,255,108,0.6);
+    min-width: 60px;
+    text-align: right;
+  }
+
+  /* ===== detailed stats ===== */
+  .stat-toggle-btn {
+    background: rgba(108,255,108,0.08);
+    border: 1px solid var(--green-dim);
+    color: var(--grey);
+    font-family: inherit;
+    font-size: clamp(10px, 1.5vw, 12px);
+    padding: clamp(4px, 0.8vw, 6px) clamp(12px, 2vw, 16px);
+    letter-spacing: clamp(1px, 0.5vw, 3px);
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: clamp(8px, 1.5vw, 12px);
+    -webkit-tap-highlight-color: transparent;
+    text-shadow: 0 0 4px rgba(108,255,108,0.3);
+    transition: all 0.2s ease;
+  }
+  .stat-toggle-btn:active {
+    background: rgba(108,255,108,0.15);
+    transform: scale(0.95);
+  }
+  .stat-toggle-btn.active {
+    border-color: var(--green);
+    color: var(--green);
+    text-shadow: 0 0 6px rgba(108,255,108,0.5);
+    background: rgba(108,255,108,0.1);
+  }
+
+  .detailed-stats {
+    width: 100%;
+    max-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(6px, 1vw, 8px);
+    margin-top: clamp(12px, 2vw, 14px);
+    padding: clamp(10px, 1.5vw, 14px);
+    background: rgba(13, 19, 13, 0.5);
+    border: 1px solid var(--green-dim);
+  }
+  .detailed-stats.hidden {
+    display: none;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: clamp(10px, 1.5vw, 12px);
+    letter-spacing: clamp(0.5px, 0.3vw, 2px);
+    padding: clamp(4px, 0.8vw, 6px) 0;
+    border-bottom: 1px solid rgba(108,255,108,0.1);
+  }
+  .stat-row:last-child {
+    border-bottom: none;
+  }
+
+  .stat-label {
+    color: var(--grey);
+    font-weight: bold;
+    letter-spacing: clamp(1px, 0.5vw, 3px);
+  }
+
+  .stat-value {
+    color: var(--green);
+    font-weight: bold;
+    text-shadow: 0 0 4px rgba(108,255,108,0.5);
+    min-width: 70px;
+    text-align: right;
   }
 </style>
 </head>
@@ -643,7 +1044,14 @@
     <div class="seg"><label>SCORE</label><span class="val" id="score">0000</span></div>
     <div class="seg"><label>RANK</label><span class="val amber" id="rank">D</span></div>
     <div class="seg"><label>RALLY</label><span class="val" id="rally">000</span></div>
-    <div class="seg"><label>HIGH</label><span class="val red" id="high">0000</span></div>
+    <div class="seg leader-seg">
+      <label>LEADER</label>
+      <div class="leader-info">
+        <span class="crown">👑</span>
+        <span class="leader-name" id="leaderName">—</span>
+        <span class="leader-score" id="leaderScore">0000</span>
+      </div>
+    </div>
   </div>
 
   <div class="court" id="court">
@@ -699,6 +1107,13 @@
   \_______/</pre>
     </div>
 
+    <div class="trail t10" id="trail10"></div>
+    <div class="trail t9" id="trail9"></div>
+    <div class="trail t8" id="trail8"></div>
+    <div class="trail t7" id="trail7"></div>
+    <div class="trail t6" id="trail6"></div>
+    <div class="trail t5" id="trail5"></div>
+    <div class="trail t4" id="trail4"></div>
     <div class="trail t3" id="trail3"></div>
     <div class="trail t2" id="trail2"></div>
     <div class="ball"   id="ball"></div>
@@ -706,6 +1121,11 @@
     <div class="bonus hidden" id="bonus">
       <div class="num">+10</div>
       <span class="sub">WINNER!  CPU MISSED</span>
+    </div>
+
+    <div class="combo-alert hidden" id="comboAlert">
+      <div class="combo-text">COMBO</div>
+      <div class="combo-number" id="comboNumber">10</div>
     </div>
 
     <div class="overlay hidden" id="nameOverlay">
@@ -748,7 +1168,43 @@
         <div class="s"><label>RANK</label><span class="v amber" id="overRank">D</span></div>
         <div class="s"><label>HIGH</label><span class="v" id="overHigh">0000</span></div>
       </div>
-      <p class="pulse" style="margin-top:18px">TAP TO RETRY</p>
+      <button class="stat-toggle-btn" id="statToggleBtn">STATS</button>
+      <div class="detailed-stats hidden" id="detailedStats">
+        <div class="stat-row">
+          <span class="stat-label">TIME</span>
+          <span class="stat-value" id="statTime">0:00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">HITS</span>
+          <span class="stat-value" id="statHits">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">MAX COMBO</span>
+          <span class="stat-value" id="statMaxCombo">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">MAX SPEED</span>
+          <span class="stat-value" id="statMaxSpeed">0.0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">AVG SPEED</span>
+          <span class="stat-value" id="statAvgSpeed">0.0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">ACCURACY</span>
+          <span class="stat-value" id="statAccuracy">0%</span>
+        </div>
+      </div>
+      <div style="margin-top: 16px; width: 100%; display: flex; gap: 10px; justify-content: center;">
+        <button class="overlay-btn" id="retryBtn" style="margin-top: 0;">RETRY</button>
+        <button class="overlay-btn" id="rankingBtn" style="margin-top: 0;">RANKING</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="rankingOverlay">
+      <h1>RANKING</h1>
+      <div class="ranking-list" id="rankingList"></div>
+      <p class="pulse" style="margin-top: 18px">TAP TO CLOSE</p>
     </div>
 
     <div class="overlay hidden" id="cdOverlay">
@@ -782,22 +1238,30 @@
   const PADDLE_H = 112;   // 14 lines * 8px
   const BALL_SIZE = 12;
   const PLAYER_SPEED_KEY = 7;
-  const CPU_BASE_SPEED = 4;
-  const BALL_BASE = 4.5;
+  const CPU_BASE_SPEED = 7.5;
+  const BALL_BASE = 9.5;
   const BALL_SPEEDUP = 1.04;
-  const BALL_MAX = 13;
+  const BALL_MAX = 20;
 
   // ===== elements =====
   const courtEl  = document.getElementById('court');
   const playerEl = document.getElementById('player');
   const cpuEl    = document.getElementById('cpu');
   const ballEl   = document.getElementById('ball');
-  const t2El     = document.getElementById('trail2');
-  const t3El     = document.getElementById('trail3');
+  const trailEls = [
+    document.getElementById('trail2'),
+    document.getElementById('trail3'),
+    document.getElementById('trail4'),
+    document.getElementById('trail5'),
+    document.getElementById('trail6'),
+    document.getElementById('trail7'),
+    document.getElementById('trail8'),
+    document.getElementById('trail9'),
+    document.getElementById('trail10')
+  ];
   const scoreEl  = document.getElementById('score');
   const rankEl   = document.getElementById('rank');
   const rallyEl  = document.getElementById('rally');
-  const highEl   = document.getElementById('high');
   const overOv   = document.getElementById('overOverlay');
   const cdOv     = document.getElementById('cdOverlay');
   const cdNum    = document.getElementById('cdNum');
@@ -806,6 +1270,9 @@
   const overHigh = document.getElementById('overHigh');
   const overReason = document.getElementById('overReason');
   const bonusEl = document.getElementById('bonus');
+  const comboAlert = document.getElementById('comboAlert');
+  const comboNumber = document.getElementById('comboNumber');
+  let lastComboAlertLevel = 0;
   const muteBtn = document.getElementById('muteBtn');
   const selectOv  = document.getElementById('selectOverlay');
   const nameOv    = document.getElementById('nameOverlay');
@@ -815,6 +1282,20 @@
   const labelBot  = document.querySelector('.court-label.bottom');
   const playerNameEl = document.getElementById('playerName');
   const renameBtn = document.getElementById('renameBtn');
+  const rankingOv = document.getElementById('rankingOverlay');
+  const rankingList = document.getElementById('rankingList');
+  const retryBtn = document.getElementById('retryBtn');
+  const rankingBtn = document.getElementById('rankingBtn');
+  const detailedStats = document.getElementById('detailedStats');
+  const statToggleBtn = document.getElementById('statToggleBtn');
+  const statTime = document.getElementById('statTime');
+  const statHits = document.getElementById('statHits');
+  const statMaxCombo = document.getElementById('statMaxCombo');
+  const statMaxSpeed = document.getElementById('statMaxSpeed');
+  const statAvgSpeed = document.getElementById('statAvgSpeed');
+  const statAccuracy = document.getElementById('statAccuracy');
+  const leaderName = document.getElementById('leaderName');
+  const leaderScore = document.getElementById('leaderScore');
 
   // ===== CHARACTERS =====
   // label is exactly 9 chars to fit body inner width
@@ -997,7 +1478,17 @@
     player: { x: (COURT_W - PADDLE_W) / 2, y: COURT_H - PADDLE_H - 20 },
     cpu:    { x: (COURT_W - PADDLE_W) / 2, y: 20 },
     ball:   { x: COURT_W/2, y: COURT_H/2, vx: 0, vy: 0, speed: BALL_BASE },
-    trail:  [{x: COURT_W/2, y: COURT_H/2}, {x: COURT_W/2, y: COURT_H/2}]
+    trail:  Array(10).fill(0).map(() => ({x: COURT_W/2, y: COURT_H/2})),
+    stats: {
+      totalHits: 0,
+      maxCombo: 0,
+      currentCombo: 0,
+      maxBallSpeed: 0,
+      totalBallSpeed: 0,
+      ballSpeedSamples: 0,
+      startTime: 0,
+      missCount: 0
+    }
   };
 
   // ===== utils =====
@@ -1011,24 +1502,72 @@
     if (s >= 10)  return 'C';
     return 'D';
   }
+  function formatTime(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${String(secs).padStart(2, '0')}`;
+  }
+  function calculateStats() {
+    const gameTime = Date.now() - state.stats.startTime;
+    const avgSpeed = state.stats.ballSpeedSamples > 0
+      ? (state.stats.totalBallSpeed / state.stats.ballSpeedSamples).toFixed(1)
+      : 0;
+    const accuracy = state.stats.totalHits > 0
+      ? Math.round((state.stats.totalHits / (state.stats.totalHits + state.stats.missCount)) * 100)
+      : 0;
+    return {
+      time: gameTime,
+      hits: state.stats.totalHits,
+      maxCombo: state.stats.maxCombo,
+      maxSpeed: state.stats.maxBallSpeed.toFixed(1),
+      avgSpeed,
+      accuracy
+    };
+  }
+  function updateStatsDisplay() {
+    const stats = calculateStats();
+    statTime.textContent = formatTime(stats.time);
+    statHits.textContent = stats.hits;
+    statMaxCombo.textContent = stats.maxCombo;
+    statMaxSpeed.textContent = stats.maxSpeed;
+    statAvgSpeed.textContent = stats.avgSpeed;
+    statAccuracy.textContent = stats.accuracy + '%';
+  }
 
   // ===== rendering =====
+  function getCourtScale() {
+    const rect = courtEl.getBoundingClientRect();
+    return {
+      scaleX: rect.width / COURT_W,
+      scaleY: rect.height / COURT_H
+    };
+  }
   function setPos(el, x, y) {
-    el.style.setProperty('--tx', x + 'px');
-    el.style.setProperty('--ty', y + 'px');
-    el.style.transform = `translate(${x}px, ${y}px)`;
+    const { scaleX, scaleY } = getCourtScale();
+    const pixelX = x * scaleX;
+    const pixelY = y * scaleY;
+    el.style.setProperty('--tx', pixelX + 'px');
+    el.style.setProperty('--ty', pixelY + 'px');
+    el.style.transform = `translate(${pixelX}px, ${pixelY}px)`;
   }
   function render() {
+    const { scaleX, scaleY } = getCourtScale();
+
     setPos(playerEl, state.player.x, state.player.y);
     setPos(cpuEl,    state.cpu.x,    state.cpu.y);
-    ballEl.style.transform = `translate(${state.ball.x}px, ${state.ball.y}px)`;
-    t2El.style.transform   = `translate(${state.trail[0].x}px, ${state.trail[0].y}px)`;
-    t3El.style.transform   = `translate(${state.trail[1].x}px, ${state.trail[1].y}px)`;
+    ballEl.style.transform = `translate(${state.ball.x * scaleX}px, ${state.ball.y * scaleY}px)`;
+
+    // Render all trails
+    trailEls.forEach((el, idx) => {
+      if (state.trail[idx]) {
+        el.style.transform = `translate(${state.trail[idx].x * scaleX}px, ${state.trail[idx].y * scaleY}px)`;
+      }
+    });
 
     scoreEl.textContent = pad(state.score);
     rallyEl.textContent = pad(state.rally, 3);
     rankEl.textContent  = rank(state.score);
-    highEl.textContent  = pad(state.high);
   }
   function showBonus() {
     bonusEl.classList.remove('hidden');
@@ -1038,13 +1577,181 @@
     setTimeout(() => bonusEl.classList.add('hidden'), 1100);
     sfxBonus();
   }
+  function checkComboMilestone(combo) {
+    const milestones = [10, 50, 100, 200, 300, 500, 750, 1000];
+    for (let m of milestones) {
+      if (combo === m) {
+        comboNumber.textContent = combo;
+        comboAlert.classList.remove('hidden');
+        comboAlert.classList.remove('show');
+        void comboAlert.offsetWidth;
+        comboAlert.classList.add('show');
+        setTimeout(() => comboAlert.classList.add('hidden'), 1400);
+        return;
+      }
+    }
+  }
+  function createParticles(x, y, count = 12) {
+    const { scaleX, scaleY } = getCourtScale();
+    const screenX = x * scaleX;
+    const screenY = y * scaleY;
+
+    for (let i = 0; i < count; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+
+      // 원형으로 퍼짐
+      const angle = (i / count) * Math.PI * 2;
+      const distance = 100 + Math.random() * 40;
+      const tx = Math.cos(angle) * distance;
+      const ty = Math.sin(angle) * distance;
+
+      particle.style.left = screenX + 'px';
+      particle.style.top = screenY + 'px';
+      particle.style.setProperty('--tx', tx + 'px');
+      particle.style.setProperty('--ty', ty + 'px');
+
+      courtEl.appendChild(particle);
+
+      // 애니메이션 후 제거
+      setTimeout(() => particle.remove(), 500);
+    }
+  }
+
   function flashSwing(side) {
     const el = side === 'p' ? playerEl : cpuEl;
-    const cls = side === 'p' ? 'swing-r' : 'swing-l';
+    const cls = 'swing-r';
+
+    // Create particles at paddle center
+    const particleX = side === 'p'
+      ? state.player.x + PADDLE_W / 2
+      : state.cpu.x + PADDLE_W / 2;
+    const particleY = side === 'p'
+      ? state.player.y + PADDLE_H / 2
+      : state.cpu.y + PADDLE_H / 2;
+
+    createParticles(particleX, particleY, 16);
+
     el.classList.remove(cls);
     void el.offsetWidth;
     el.classList.add(cls);
-    setTimeout(() => el.classList.remove(cls), 200);
+    setTimeout(() => el.classList.remove(cls), 300);
+  }
+
+  // ===== ranking system (server only) =====
+  // API 서버 주소 - 같은 서버 (포트 8000)
+  const API_BASE = '';
+
+  function loadRankings() {
+    const data = localStorage.getItem('wamuse-rankings');
+    return data ? JSON.parse(data) : {};
+  }
+
+  function saveRankingLocal(name, score) {
+    const rankings = loadRankings();
+    if (!rankings[name]) {
+      rankings[name] = { scores: [], best: 0 };
+    }
+    rankings[name].scores.push(score);
+    rankings[name].best = Math.max(rankings[name].best, score);
+    localStorage.setItem('wamuse-rankings', JSON.stringify(rankings));
+  }
+
+  async function saveScoreToServer(nickname, score, stats) {
+    try {
+      const response = await fetch(`${API_BASE}/api/scores`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ nickname, score, stats })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Score saved to server:', result);
+        return result;
+      } else {
+        console.error('Failed to save score to server:', response.statusText);
+        return null;
+      }
+    } catch (err) {
+      console.warn('Server connection failed:', err);
+      return null;
+    }
+  }
+
+  async function getTopPlayers(limit = 10) {
+    console.log('getTopPlayers called, API_BASE:', API_BASE);
+
+    const url = `${API_BASE}/api/rankings?limit=${limit}`;
+    console.log('Fetching from:', url);
+
+    const response = await fetch(url);
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const players = await response.json();
+    console.log('Got players from server:', players);
+    return players;
+  }
+
+  async function updateLeaderDisplay() {
+    try {
+      const players = await getTopPlayers(1);
+      if (players && players.length > 0) {
+        const leader = players[0];
+        leaderName.textContent = leader.name || '—';
+        leaderScore.textContent = pad(leader.score || 0);
+      }
+    } catch (err) {
+      console.warn('Failed to update leader:', err);
+      leaderName.textContent = '—';
+      leaderScore.textContent = '0000';
+    }
+  }
+
+  function showRanking() {
+    console.log('showRanking called');
+    rankingList.innerHTML = '<p style="color: var(--grey); text-align: center; padding: 20px; font-size: 12px;">LOADING...</p>';
+    rankingOv.classList.remove('hidden');
+
+    // Load rankings from server
+    getTopPlayers()
+      .then(players => {
+        console.log('showRanking: got players', players);
+        rankingList.innerHTML = '';
+
+        if (!players || players.length === 0) {
+          rankingList.innerHTML = '<p style="color: var(--grey); text-align: center; padding: 20px;">NO RANKINGS YET</p>';
+          return;
+        }
+
+        players.forEach((p, idx) => {
+          const item = document.createElement('div');
+          item.className = 'ranking-item';
+          if (idx === 0) item.classList.add('top1');
+          else if (idx === 1) item.classList.add('top2');
+          else if (idx === 2) item.classList.add('top3');
+
+          const rank = p.rank || (idx + 1);
+          const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+          item.innerHTML = `
+            ${medal ? `<span class="rank-medal">${medal}</span>` : ''}
+            <span class="rank-num">#${rank}</span>
+            <span class="rank-name">${p.name}</span>
+            <span class="rank-score">${pad(p.score)}</span>
+          `;
+          rankingList.appendChild(item);
+        });
+      })
+      .catch(err => {
+        console.error('showRanking error:', err);
+        rankingList.innerHTML = `<p style="color: var(--red); text-align: center; padding: 20px;">ERROR: ${err.message}</p>`;
+      });
   }
 
   // ===== game flow =====
@@ -1053,6 +1760,7 @@
     selectOv.classList.add('hidden');
     overOv.classList.add('hidden');
     cdOv.classList.add('hidden');
+    rankingOv.classList.add('hidden');
   }
   function showName() {
     state.mode = 'name';
@@ -1133,12 +1841,56 @@
   // prevent court pointer handler from stealing focus when tapping inside name overlay
   nameOv.addEventListener('pointerdown', e => e.stopPropagation());
   selectOv.addEventListener('pointerdown', e => e.stopPropagation());
+  overOv.addEventListener('pointerdown', e => e.stopPropagation());
+  rankingOv.addEventListener('pointerdown', e => e.stopPropagation());
+
+  // retry button
+  retryBtn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    primeAudio();
+    overOv.classList.add('hidden');
+    newGame();
+  });
+
+  // ranking button
+  rankingBtn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    showRanking();
+  });
+
+  // ranking overlay close
+  rankingOv.addEventListener('click', e => {
+    if (e.target === rankingOv) {
+      rankingOv.classList.add('hidden');
+      overOv.classList.remove('hidden');
+    }
+  });
+
+  // stats toggle button
+  statToggleBtn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const isHidden = detailedStats.classList.contains('hidden');
+    if (isHidden) {
+      detailedStats.classList.remove('hidden');
+      statToggleBtn.classList.add('active');
+      updateStatsDisplay();
+    } else {
+      detailedStats.classList.add('hidden');
+      statToggleBtn.classList.remove('active');
+    }
+  });
   function showGameOver(reason) {
     overOv.classList.remove('hidden');
     overScore.textContent = pad(state.score);
     overRank.textContent  = rank(state.score);
     overHigh.textContent  = pad(state.high);
     overReason.textContent = reason || '— ball passed your side —';
+    detailedStats.classList.add('hidden');
+    statToggleBtn.classList.remove('active');
+    updateStatsDisplay();
   }
   function newGame() {
     state.score = 0;
@@ -1147,6 +1899,16 @@
     state.player.y = COURT_H - PADDLE_H - 20;
     state.cpu.x    = (COURT_W - PADDLE_W) / 2;
     state.cpu.y    = 20;
+    state.stats = {
+      totalHits: 0,
+      maxCombo: 0,
+      currentCombo: 0,
+      maxBallSpeed: 0,
+      totalBallSpeed: 0,
+      ballSpeedSamples: 0,
+      startTime: 0,
+      missCount: 0
+    };
     countdownAndServe('player');
   }
   function countdownAndServe(direction) {
@@ -1178,8 +1940,12 @@
     const dir = direction === 'player' ? 1 : -1;  // 1 = down (toward player), -1 = up (toward cpu)
     state.ball.vy = dir * BALL_BASE * Math.cos(angle);
     state.ball.vx = BALL_BASE * Math.sin(angle);
-    state.trail[0] = { x: state.ball.x, y: state.ball.y };
-    state.trail[1] = { x: state.ball.x, y: state.ball.y };
+    state.trail = Array(10).fill(0).map(() => ({x: state.ball.x, y: state.ball.y}));
+    if (state.stats.startTime === 0) {
+      state.stats.startTime = Date.now();
+      // Update leader info at game start (non-blocking)
+      updateLeaderDisplay().catch(err => console.warn('Leader update failed:', err));
+    }
     state.mode = 'rally';
     updateRenameBtn();
   }
@@ -1188,10 +1954,27 @@
       state.high = state.score;
       localStorage.setItem('wamuse-tennis-high', String(state.high));
     }
+
+    const playerName = state.nickname || 'PLAYER';
+
+    // Save to local storage (fallback)
+    saveRankingLocal(playerName, state.score);
+
+    // Reset combo when game ends
+    state.rally = 0;
+    state.stats.currentCombo = 0;
+
+    // Immediately set game over state
     state.mode = 'over';
     showGameOver(reason);
     sfxGameOver();
     updateRenameBtn();
+
+    // Save to server asynchronously (non-blocking)
+    const stats = calculateStats();
+    saveScoreToServer(playerName, state.score, stats).catch(err => {
+      console.error('Failed to save score:', err);
+    });
   }
 
   // ===== input: pointer (touch + mouse unified) =====
@@ -1204,8 +1987,8 @@
   }
 
   courtEl.addEventListener('pointerdown', e => {
-    // overlays handle their own clicks (name/select).
-    if (state.mode === 'select' || state.mode === 'name') {
+    // overlays handle their own clicks (name/select/over/ranking).
+    if (state.mode === 'select' || state.mode === 'name' || state.mode === 'over') {
       primeAudio();
       return;
     }
@@ -1213,11 +1996,7 @@
     courtEl.setPointerCapture(e.pointerId);
     pointerDown = true;
     primeAudio();
-    if (state.mode === 'over') {
-      overOv.classList.add('hidden');
-      newGame();
-      return;
-    }
+
     if (state.mode === 'rally') {
       const x = getCourtX(e.clientX);
       state.player.x = clamp(x - PADDLE_W/2, 0, COURT_W - PADDLE_W);
@@ -1252,27 +2031,58 @@
   });
 
   // ===== loop =====
+  const TARGET_FPS = 60;
+  const FRAME_TIME = 1000 / TARGET_FPS;  // 16.67ms
+  let lastFrameTime = Date.now();
+
   function tick() {
+    const now = Date.now();
+    const elapsed = now - lastFrameTime;
+
+    // Frame rate limiting to 60 FPS
+    if (elapsed < FRAME_TIME) {
+      requestAnimationFrame(tick);
+      return;
+    }
+    lastFrameTime = now;
+
     if (state.mode === 'rally') {
       // ----- keyboard fallback -----
       if (state.keys['ArrowLeft'])  state.player.x -= PLAYER_SPEED_KEY;
       if (state.keys['ArrowRight']) state.player.x += PLAYER_SPEED_KEY;
       state.player.x = clamp(state.player.x, 0, COURT_W - PADDLE_W);
 
-      // ----- cpu AI: track ball.x -----
-      const cpuTarget = state.ball.x - PADDLE_W/2 + BALL_SIZE/2;
-      const cpuSpeed = CPU_BASE_SPEED + Math.min(4, state.score * 0.04);
+      // ----- cpu AI: track ball with prediction -----
+      const ballCenterX = state.ball.x + BALL_SIZE/2;
+      const predictedX = state.ball.vy > 0
+        ? ballCenterX + state.ball.vx * (Math.abs(COURT_H - state.ball.y) / Math.abs(state.ball.vy))
+        : ballCenterX;
+      const cpuTarget = clamp(predictedX - PADDLE_W/2, 0, COURT_W - PADDLE_W);
+      const cpuSpeed = CPU_BASE_SPEED + Math.min(7.5, state.score * 0.3);
       const dx = cpuTarget - state.cpu.x;
       state.cpu.x += Math.sign(dx) * Math.min(Math.abs(dx), cpuSpeed);
       state.cpu.x = clamp(state.cpu.x, 0, COURT_W - PADDLE_W);
 
       // ----- trail update -----
-      state.trail[1] = { ...state.trail[0] };
-      state.trail[0] = { x: state.ball.x, y: state.ball.y };
+      const ballSpeed = Math.sqrt(state.ball.vx * state.ball.vx + state.ball.vy * state.ball.vy);
+      const trailCount = Math.min(10, Math.ceil(ballSpeed / 1.5));
+      if (state.trail.length > trailCount) {
+        state.trail = state.trail.slice(0, trailCount);
+      }
+      state.trail.unshift({ x: state.ball.x, y: state.ball.y });
+      if (state.trail.length > 10) {
+        state.trail.pop();
+      }
 
       // ----- ball move -----
       state.ball.x += state.ball.vx;
       state.ball.y += state.ball.vy;
+
+      // ----- track ball speed -----
+      const currentBallSpeed = Math.sqrt(state.ball.vx * state.ball.vx + state.ball.vy * state.ball.vy);
+      state.stats.maxBallSpeed = Math.max(state.stats.maxBallSpeed, currentBallSpeed);
+      state.stats.totalBallSpeed += currentBallSpeed;
+      state.stats.ballSpeedSamples++;
 
       // side wall bounce (left/right edges in portrait)
       if (state.ball.x < 0) { state.ball.x = 0; state.ball.vx = -state.ball.vx; }
@@ -1294,6 +2104,10 @@
         state.ball.vx =  state.ball.speed * Math.sin(ang);
         state.score++;
         state.rally++;
+        state.stats.totalHits++;
+        state.stats.currentCombo++;
+        state.stats.maxCombo = Math.max(state.stats.maxCombo, state.stats.currentCombo);
+        checkComboMilestone(state.rally);
         flashSwing('p');
         sfxHit();
       }
@@ -1311,16 +2125,23 @@
                   + (Math.random() - 0.5) * 0.3;
         state.ball.vy =  state.ball.speed * Math.cos(ang);   // downward
         state.ball.vx =  state.ball.speed * Math.sin(ang);
+        state.stats.currentCombo = 0;
         flashSwing('c');
         sfxCpuHit();
       }
 
       // out of bounds
       if (state.ball.y > COURT_H) {
+        state.stats.missCount++;
+        state.stats.currentCombo = 0;
         endGame('— you missed the return —');
       } else if (state.ball.y + BALL_SIZE < 0) {
         // CPU missed → +10 bonus
         state.score += 10;
+        state.rally++;
+        state.stats.currentCombo++;
+        state.stats.maxCombo = Math.max(state.stats.maxCombo, state.stats.currentCombo);
+        checkComboMilestone(state.rally);
         showBonus();
         state.mode = 'pause';
         state.ball.y = -200;  // hide off-screen
@@ -1333,6 +2154,17 @@
     requestAnimationFrame(tick);
   }
 
+  // ===== Safari viewport fix =====
+  function adjustViewport() {
+    const stageEl = document.querySelector('.stage');
+    if (stageEl) {
+      stageEl.style.maxHeight = `calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - clamp(8px, 2vw, 24px))`;
+    }
+  }
+  window.addEventListener('resize', adjustViewport);
+  window.addEventListener('orientationchange', adjustViewport);
+  adjustViewport();
+
   // ===== boot =====
   // pre-populate wines with first/second character so they render behind overlay
   state.playerChar = CHARS[0];
@@ -1342,11 +2174,22 @@
   refreshNickname();
   updateRenameBtn();
   render();
-  if (state.nickname) {
-    showSelect();
-  } else {
+
+  // Initialize leader display
+  leaderName.textContent = '—';
+  leaderScore.textContent = '0000';
+
+  try {
+    if (state.nickname) {
+      showSelect();
+    } else {
+      showName();
+    }
+  } catch (err) {
+    console.error('Boot error:', err);
     showName();
   }
+
   tick();
 })();
 </script>
