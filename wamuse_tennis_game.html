@@ -2690,14 +2690,14 @@
       swingRotation = 45 - (45 - 18) * ((swingProgress - 0.5) * 2);
     }
 
-    // Draw racket with dynamic rotation
+    // Draw racket with dynamic rotation (vertically flipped)
     const racketLines = [
-      "   |",
-      "   |",
-      " /###\\",
-      "|#####|",
+      "  ___",
       " \\###/",
-      "  ___"
+      "|#####|",
+      " /###\\",
+      "   |",
+      "   |"
     ];
 
     const racketStartX = px + 20;
