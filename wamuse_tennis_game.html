@@ -1520,16 +1520,16 @@
   const BRICK_OFFSET_X = (COURT_W - BRICK_COLS * (BRICK_W + BRICK_GAP) + BRICK_GAP) / 2;
 
   const STAGE_CONFIGS = [
-    { rows:3, cols:8, pattern:'full',    hpMap:[1],      ballSpeed:5.0, paddleW:90 },
-    { rows:4, cols:8, pattern:'full',    hpMap:[1],      ballSpeed:5.5, paddleW:85 },
-    { rows:4, cols:8, pattern:'gap_mid', hpMap:[1,1,2,1],ballSpeed:6.0, paddleW:80 },
-    { rows:5, cols:8, pattern:'diamond', hpMap:[1,2,2,2,1],ballSpeed:6.5,paddleW:78 },
-    { rows:5, cols:8, pattern:'checker', hpMap:[2],      ballSpeed:7.0, paddleW:75 },
-    { rows:6, cols:8, pattern:'full',    hpMap:[2],      ballSpeed:7.5, paddleW:72 },
-    { rows:6, cols:8, pattern:'center_hard', hpMap:[2,3],ballSpeed:8.0,paddleW:70 },
-    { rows:7, cols:8, pattern:'zigzag',  hpMap:[2],      ballSpeed:8.5, paddleW:68 },
-    { rows:7, cols:8, pattern:'full',    hpMap:[3],      ballSpeed:9.0, paddleW:65 },
-    { rows:8, cols:8, pattern:'boss',    hpMap:[3],      ballSpeed:9.5, paddleW:60 }
+    { rows:3, cols:8, pattern:'full',    hpMap:[1],      ballSpeed:8.0, paddleW:90 },
+    { rows:4, cols:8, pattern:'full',    hpMap:[1],      ballSpeed:8.5, paddleW:85 },
+    { rows:4, cols:8, pattern:'gap_mid', hpMap:[1,1,2,1],ballSpeed:9.0, paddleW:80 },
+    { rows:5, cols:8, pattern:'diamond', hpMap:[1,2,2,2,1],ballSpeed:9.5,paddleW:78 },
+    { rows:5, cols:8, pattern:'checker', hpMap:[2],      ballSpeed:10.0, paddleW:75 },
+    { rows:6, cols:8, pattern:'full',    hpMap:[2],      ballSpeed:10.5, paddleW:72 },
+    { rows:6, cols:8, pattern:'center_hard', hpMap:[2,3],ballSpeed:11.0,paddleW:70 },
+    { rows:7, cols:8, pattern:'zigzag',  hpMap:[2],      ballSpeed:11.5, paddleW:68 },
+    { rows:7, cols:8, pattern:'full',    hpMap:[3],      ballSpeed:12.0, paddleW:65 },
+    { rows:8, cols:8, pattern:'boss',    hpMap:[3],      ballSpeed:12.5, paddleW:60 }
   ];
 
   // ===== AUDIO ENGINE (Web Audio API, chiptune synthesis) =====
@@ -2383,6 +2383,9 @@
   }
 
   function startBrickGame() {
+    // Hide all overlays
+    hideAllOverlays();
+
     // Hide tennis elements
     playerEl.style.display = 'none';
     cpuEl.style.display = 'none';
@@ -2626,6 +2629,7 @@
       const speed = cfg.ballSpeed;
       ball.vy = -speed * Math.cos(ang);
       ball.vx =  speed * Math.sin(ang);
+      flashSwing('p');
       sfxHit();
     }
 
@@ -2664,6 +2668,20 @@
     const px = state.brick.paddle.x;
     const py = COURT_H - 112 - 10;
 
+    // Draw racket
+    const racketLines = [
+      "   |",
+      "   |",
+      " /###\\",
+      "|#####|",
+      " \\###/",
+      "  ___"
+    ];
+    racketLines.forEach((line, i) => {
+      brickCtx.fillText(line, px, py - 50 + i * 8);
+    });
+
+    // Draw bottle
     lines.forEach((line, i) => {
       brickCtx.fillText(line, px, py + i * 8);
     });
